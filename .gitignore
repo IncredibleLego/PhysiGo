@@ -1,0 +1,8 @@
+# Ignore all compiled ELF files
+*.out
+*.exe
+*.elf
+
+goPong
+settings.json
+highscores.json

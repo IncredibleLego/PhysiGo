@@ -17,14 +17,15 @@ type Game struct {
 
 func NewGame() *Game {
 	sceneMap := map[scenes.SceneId]scenes.Scene{
-		scenes.GameSceneId:        scenes.NewGameScene(),
-		scenes.StartSceneId:       scenes.NewStartScene(),
-		scenes.PauseSceneId:       nil,
-		scenes.ComputerSceneId:    scenes.NewComputerScene(),
-		scenes.MultiplayerSceneId: scenes.NewMultiplayerScene(),
-		scenes.OptionsSceneId:     nil,
-		scenes.NameInputSceneId:   nil,
-		scenes.HighScoresSceneId:  nil,
+		scenes.GameSceneId:          scenes.NewGameScene(),
+		scenes.StartSceneId:         scenes.NewStartScene(),
+		scenes.PauseSceneId:         nil,
+		scenes.ComputerSceneId:      scenes.NewComputerScene(),
+		scenes.MultiplayerSceneId:   scenes.NewMultiplayerScene(),
+		scenes.OptionsSceneId:       nil,
+		scenes.NameInputSceneId:     nil,
+		scenes.HighScoresSceneId:    nil,
+		scenes.InclinedPlaneSceneId: scenes.NewInclinedPlaneScene(),
 	}
 	activeSceneId := scenes.StartSceneId
 	sceneMap[activeSceneId].FirstLoad()

@@ -9,8 +9,6 @@ import (
 )
 
 func TitleDraw(screen *ebiten.Image) {
-	//Lettere 82 spazio 21 bordere 14
-
 	// Draw Options
 
 	//var X float32 = 21     // Starting X position

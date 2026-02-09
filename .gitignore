@@ -3,6 +3,6 @@
 *.exe
 *.elf
 
-goPong
+physigo
 settings.json
 highscores.json

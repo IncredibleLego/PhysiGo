@@ -3,7 +3,7 @@
 *.exe
 *.elf
 
-physigo
+physiGo
 settings.json
 highscores.json
 TODO.md

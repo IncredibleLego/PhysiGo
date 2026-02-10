@@ -1,11 +1,22 @@
 package scenes
 
 import (
+	"physiGo/config"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type InclinedPlaneScene struct {
+	theta   float64
+	muS     float64
+	muK     float64
+	mass    float64
+	gravity float64
+
+	muSSet     bool
+	muKSet     bool
+	gravitySet bool
 }
 
 func (i *InclinedPlaneScene) ShouldPreserveState(reason SceneChangeReason) bool {
@@ -17,11 +28,18 @@ func NewInclinedPlaneScene() *InclinedPlaneScene {
 }
 
 func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
-	// Black screen - nothing to draw
+	screen.Clear()
 }
 
 func (i *InclinedPlaneScene) FirstLoad() {
-	// Nothing to initialize yet
+	i.theta = config.GlobalConfig.InclinedTheta
+	i.muS = config.GlobalConfig.InclinedMuS
+	i.muK = config.GlobalConfig.InclinedMuK
+	i.mass = config.GlobalConfig.InclinedMass
+	i.gravity = config.GlobalConfig.InclinedGravity
+	i.muSSet = config.GlobalConfig.InclinedMuSSet
+	i.muKSet = config.GlobalConfig.InclinedMuKSet
+	i.gravitySet = config.GlobalConfig.InclinedGravitySet
 }
 
 func (i *InclinedPlaneScene) OnEnter() {
@@ -31,7 +49,6 @@ func (i *InclinedPlaneScene) OnExit() {
 }
 
 func (i *InclinedPlaneScene) Update() SceneId {
-	// Open options menu with Enter key
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		return PauseSceneId
 	}

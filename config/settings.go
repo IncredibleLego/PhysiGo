@@ -12,6 +12,14 @@ type Config struct {
 	Fullscreen             bool
 	Player1Name            string
 	Player2Name            string
+	InclinedTheta          float64
+	InclinedMuS            float64
+	InclinedMuK            float64
+	InclinedMass           float64
+	InclinedGravity        float64
+	InclinedMuSSet         bool
+	InclinedMuKSet         bool
+	InclinedGravitySet     bool
 	BallSpeed              int
 	BallSize               int
 	PaddleSpeed            int
@@ -33,6 +41,14 @@ var GlobalConfig = &Config{
 	Fullscreen:             true,
 	Player1Name:            "Player 1",
 	Player2Name:            "Player 2",
+	InclinedTheta:          0,
+	InclinedMuS:            0,
+	InclinedMuK:            0,
+	InclinedMass:           0,
+	InclinedGravity:        9.8,
+	InclinedMuSSet:         false,
+	InclinedMuKSet:         false,
+	InclinedGravitySet:     false,
 	BallSpeed:              9,
 	BallSize:               22,
 	PaddleSpeed:            9,
@@ -54,6 +70,14 @@ var DefaultConfig = &Config{
 	Fullscreen:             true,
 	Player1Name:            "Player 1",
 	Player2Name:            "Player 2",
+	InclinedTheta:          0,
+	InclinedMuS:            0,
+	InclinedMuK:            0,
+	InclinedMass:           0,
+	InclinedGravity:        9.8,
+	InclinedMuSSet:         false,
+	InclinedMuKSet:         false,
+	InclinedGravitySet:     false,
 	BallSpeed:              9,
 	BallSize:               22,
 	PaddleSpeed:            9,

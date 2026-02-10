@@ -16,6 +16,7 @@ const (
 	OptionsSceneId
 	NameInputSceneId
 	HighScoresSceneId
+	InclinedInputSceneId
 	InclinedPlaneSceneId
 )
 

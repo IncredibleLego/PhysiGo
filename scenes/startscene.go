@@ -156,7 +156,7 @@ func (s *StartScene) handleMenuSelection() SceneId {
 		s.exitPopup.Active = true
 		s.exitPopup.Selected = 0
 	case "INCLINED PLANE":
-		return InclinedPlaneSceneId
+		return InclinedInputSceneId
 	case "SOLO MODE":
 		s.selectedMode = 1
 		return NameInputSceneId

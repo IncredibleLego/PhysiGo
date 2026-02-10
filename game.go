@@ -25,6 +25,7 @@ func NewGame() *Game {
 		scenes.OptionsSceneId:       nil,
 		scenes.NameInputSceneId:     nil,
 		scenes.HighScoresSceneId:    nil,
+		scenes.InclinedInputSceneId: nil,
 		scenes.InclinedPlaneSceneId: scenes.NewInclinedPlaneScene(),
 	}
 	activeSceneId := scenes.StartSceneId
@@ -78,6 +79,9 @@ func (g *Game) Update() error {
 			selectedMode := startScene.GetSelectedMode()
 			// A new name input scene is created with the selected mode from the start scene
 			g.sceneMap[scenes.NameInputSceneId] = scenes.NewNameInputScene(selectedMode)
+			reason = scenes.Other
+		} else if nextSceneId == scenes.InclinedInputSceneId {
+			g.sceneMap[scenes.InclinedInputSceneId] = scenes.NewInclinedInputScene()
 			reason = scenes.Other
 		} else if nextSceneId == scenes.HighScoresSceneId {
 			// If the next scene is the high scores scene, it is created and the reason is set to "other"

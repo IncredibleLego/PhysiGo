@@ -1,6 +1,7 @@
 package scenes
 
 import (
+	"math"
 	"physiGo/config"
 	"physiGo/utils"
 	"strconv"
@@ -19,6 +20,8 @@ type InclinedInputScene struct {
 	muKInput     string
 	massInput    string
 	gravityInput string
+	lengthInput  string
+	hBlockInput  string
 
 	lastBlink time.Time
 
@@ -48,6 +51,8 @@ func (i *InclinedInputScene) Draw(screen *ebiten.Image) {
 		"μ_k (0-1) (optional): " + i.renderInputValue(i.muKInput, 2),
 		"m (mass > 0): " + i.renderInputValue(i.massInput, 3),
 		"g (gravity): " + i.renderInputValue(i.gravityInput, 4),
+		"L (length > 0): " + i.renderInputValue(i.lengthInput, 5),
+		"h_block (height): " + i.renderInputValue(i.hBlockInput, 6),
 	}
 
 	for idx, line := range lines {
@@ -81,6 +86,8 @@ func (i *InclinedInputScene) FirstLoad() {
 	i.muKInput = ""
 	i.massInput = ""
 	i.gravityInput = "9.8"
+	i.lengthInput = ""
+	i.hBlockInput = ""
 	i.lastBlink = time.Now()
 	i.validationMessage = ""
 }
@@ -95,12 +102,12 @@ func (i *InclinedInputScene) Update() SceneId {
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
 		i.activeField--
 		if i.activeField < 0 {
-			i.activeField = 4
+			i.activeField = 6
 		}
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
 		i.activeField++
-		if i.activeField > 4 {
+		if i.activeField > 6 {
 			i.activeField = 0
 		}
 	}
@@ -108,7 +115,7 @@ func (i *InclinedInputScene) Update() SceneId {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		if i.tryConfirmActiveField() {
 			i.validationMessage = ""
-			if i.activeField < 4 {
+			if i.activeField < 6 {
 				i.activeField++
 			} else if i.allInputsValid() {
 				i.storeValues()
@@ -138,6 +145,10 @@ func (i *InclinedInputScene) renderInputValue(value string, fieldIndex int) stri
 			unit = " kg"
 		case 4:
 			unit = " m/s^2"
+		case 5:
+			unit = " m"
+		case 6:
+			unit = " m"
 		}
 		return value + unit
 	}
@@ -167,6 +178,10 @@ func (i *InclinedInputScene) handleActiveFieldInput() {
 		i.handleNumericInput(&i.massInput)
 	case 4:
 		i.handleNumericInput(&i.gravityInput)
+	case 5:
+		i.handleNumericInput(&i.lengthInput)
+	case 6:
+		i.handleNumericInput(&i.hBlockInput)
 	}
 }
 
@@ -228,6 +243,16 @@ func (i *InclinedInputScene) tryConfirmActiveField() bool {
 			i.validationMessage = "g must be greater than 0"
 			return false
 		}
+	case 5:
+		_, ok := parseRequiredMin(i.lengthInput, 0)
+		if !ok {
+			i.validationMessage = "L must be greater than 0"
+			return false
+		}
+	case 6:
+		if !i.validateHBlock() {
+			return false
+		}
 	}
 
 	return true
@@ -249,12 +274,19 @@ func (i *InclinedInputScene) allInputsValid() bool {
 	if _, ok, _ := parseOptionalMin(i.gravityInput, 0); !ok {
 		return false
 	}
+	if _, ok := parseRequiredMin(i.lengthInput, 0); !ok {
+		return false
+	}
+	if !i.validateHBlock() {
+		return false
+	}
 	return true
 }
 
 func (i *InclinedInputScene) storeValues() {
 	theta, _ := parseRequiredRange(i.thetaInput, 0, 60)
 	mass, _ := parseRequiredMin(i.massInput, 0)
+	length, _ := parseRequiredMin(i.lengthInput, 0)
 	muS, _, muSSet := parseOptionalRange(i.muSInput, 0, 1)
 	muK, _, muKSet := parseOptionalRange(i.muKInput, 0, 1)
 	gravity, _, gravitySet := parseOptionalMin(i.gravityInput, 0)
@@ -262,8 +294,16 @@ func (i *InclinedInputScene) storeValues() {
 		gravity = 9.8
 	}
 
+	// h_block is optional but defaults to 0 if not set
+	hBlock := 0.0
+	if strings.TrimSpace(i.hBlockInput) != "" {
+		hBlock, _ = parseFloatInput(i.hBlockInput)
+	}
+
 	config.GlobalConfig.InclinedTheta = theta
 	config.GlobalConfig.InclinedMass = mass
+	config.GlobalConfig.InclinedLength = length
+	config.GlobalConfig.InclinedHBlock = hBlock
 	config.GlobalConfig.InclinedMuS = muS
 	config.GlobalConfig.InclinedMuK = muK
 	config.GlobalConfig.InclinedGravity = gravity
@@ -331,6 +371,55 @@ func parseOptionalMin(input string, min float64) (float64, bool, bool) {
 func parseFloatInput(input string) (float64, error) {
 	clean := strings.ReplaceAll(strings.TrimSpace(input), ",", ".")
 	return strconv.ParseFloat(clean, 64)
+}
+
+func (i *InclinedInputScene) validateHBlock() bool {
+	// h_block can be empty (optional)
+	if strings.TrimSpace(i.hBlockInput) == "" {
+		return true
+	}
+
+	// Parse h_block
+	hBlock, err := parseFloatInput(i.hBlockInput)
+	if err != nil || hBlock <= 0 {
+		i.validationMessage = "h_block must be greater than 0"
+		return false
+	}
+
+	// Check if theta and length are available
+	thetaStr := strings.TrimSpace(i.thetaInput)
+	lengthStr := strings.TrimSpace(i.lengthInput)
+
+	if thetaStr == "" || lengthStr == "" {
+		i.validationMessage = "Enter theta and L first"
+		return false
+	}
+
+	theta, ok := parseRequiredRange(i.thetaInput, 0, 60)
+	if !ok {
+		i.validationMessage = "Enter valid theta first"
+		return false
+	}
+
+	length, ok := parseRequiredMin(i.lengthInput, 0)
+	if !ok {
+		i.validationMessage = "Enter valid L first"
+		return false
+	}
+
+	// Calculate max height: h_max = L * sin(theta)
+	thetaRad := theta * math.Pi / 180.0
+	hMax := length * math.Sin(thetaRad)
+
+	// Ho usato epsilon perché a volte, a causa di arrotondamenti, hBlock potrebbe essere leggermente maggiore di hMax anche se l'utente ha inserito un valore corretto.
+	// L'epsilon permette un piccolo margine di errore per evitare messaggi di validazione ingiusti.
+	const epsilon = 0.01
+	if hBlock > hMax+epsilon {
+		i.validationMessage = "h_block must be <= L*sin(theta) = " + strconv.FormatFloat(hMax, 'f', 2, 64) + " m"
+		return false
+	}
+
+	return true
 }
 
 var _ Scene = (*InclinedInputScene)(nil)

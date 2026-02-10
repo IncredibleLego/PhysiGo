@@ -17,6 +17,8 @@ type Config struct {
 	InclinedMuK            float64
 	InclinedMass           float64
 	InclinedGravity        float64
+	InclinedLength         float64
+	InclinedHBlock         float64
 	InclinedMuSSet         bool
 	InclinedMuKSet         bool
 	InclinedGravitySet     bool
@@ -46,6 +48,8 @@ var GlobalConfig = &Config{
 	InclinedMuK:            0,
 	InclinedMass:           0,
 	InclinedGravity:        9.8,
+	InclinedLength:         0,
+	InclinedHBlock:         0,
 	InclinedMuSSet:         false,
 	InclinedMuKSet:         false,
 	InclinedGravitySet:     false,
@@ -75,6 +79,8 @@ var DefaultConfig = &Config{
 	InclinedMuK:            0,
 	InclinedMass:           0,
 	InclinedGravity:        9.8,
+	InclinedLength:         0,
+	InclinedHBlock:         0,
 	InclinedMuSSet:         false,
 	InclinedMuKSet:         false,
 	InclinedGravitySet:     false,

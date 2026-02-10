@@ -13,6 +13,8 @@ type InclinedPlaneScene struct {
 	muK     float64
 	mass    float64
 	gravity float64
+	length  float64
+	hBlock  float64
 
 	muSSet     bool
 	muKSet     bool
@@ -37,6 +39,8 @@ func (i *InclinedPlaneScene) FirstLoad() {
 	i.muK = config.GlobalConfig.InclinedMuK
 	i.mass = config.GlobalConfig.InclinedMass
 	i.gravity = config.GlobalConfig.InclinedGravity
+	i.length = config.GlobalConfig.InclinedLength
+	i.hBlock = config.GlobalConfig.InclinedHBlock
 	i.muSSet = config.GlobalConfig.InclinedMuSSet
 	i.muKSet = config.GlobalConfig.InclinedMuKSet
 	i.gravitySet = config.GlobalConfig.InclinedGravitySet

@@ -121,8 +121,6 @@ func (i *InclinedInputScene) Update() SceneId {
 				i.storeValues()
 				return InclinedPlaneSceneId
 			}
-		} else {
-			// Keep validationMessage from tryConfirmActiveField
 		}
 	}
 
@@ -216,19 +214,19 @@ func (i *InclinedInputScene) tryConfirmActiveField() bool {
 	case 0:
 		_, ok := parseRequiredRange(i.thetaInput, 0, 60)
 		if !ok {
-			i.validationMessage = "theta must be between 0 and 60"
+			i.validationMessage = "θ must be between 0 and 60"
 			return false
 		}
 	case 1:
 		_, ok, _ := parseOptionalRange(i.muSInput, 0, 1)
 		if !ok {
-			i.validationMessage = "mu_s must be between 0 and 1"
+			i.validationMessage = "μ_s must be between 0 and 1"
 			return false
 		}
 	case 2:
 		_, ok, _ := parseOptionalRange(i.muKInput, 0, 1)
 		if !ok {
-			i.validationMessage = "mu_k must be between 0 and 1"
+			i.validationMessage = "μ_k must be between 0 and 1"
 			return false
 		}
 	case 3:

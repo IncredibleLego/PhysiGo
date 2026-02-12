@@ -3,9 +3,9 @@ package utils
 import (
 	"bytes"
 	_ "embed"
-	"physiGo/config"
 	"image/color"
 	"log"
+	"physiGo/config"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -18,9 +18,14 @@ import (
 //go:embed PressStart2P-Regular.ttf
 var pressStart2P []byte
 
+//go:embed LibertinusMath-Regular.ttf
+var libertinusMath []byte
+
 var (
-	pressStart2PFaceOnce   sync.Once
-	pressStart2PFaceSource *text.GoTextFaceSource
+	pressStart2PFaceOnce     sync.Once
+	pressStart2PFaceSource   *text.GoTextFaceSource
+	libertinusMathFaceOnce   sync.Once
+	libertinusMathFaceSource *text.GoTextFaceSource
 )
 
 func getPressStart2PFaceSource() *text.GoTextFaceSource {
@@ -34,9 +39,37 @@ func getPressStart2PFaceSource() *text.GoTextFaceSource {
 	return pressStart2PFaceSource
 }
 
-func ScreenDraw(size float64, x, y float64, colorName string, screen *ebiten.Image, line string) {
+func getLibertinusMathFaceSource() *text.GoTextFaceSource {
+	libertinusMathFaceOnce.Do(func() {
+		s, err := text.NewGoTextFaceSource(bytes.NewReader(libertinusMath))
+		if err != nil {
+			log.Fatal(err)
+		}
+		libertinusMathFaceSource = s
+	})
+	return libertinusMathFaceSource
+}
+
+// getFontSource returns the appropriate font source based on fontName
+// If fontName is empty or not recognized, returns Press2Start (default)
+// If fontName is "libertinus" or "physics", returns LibertinusMath
+func getFontSource(fontName string) *text.GoTextFaceSource {
+	switch fontName {
+	case "libertinus", "physics":
+		return getLibertinusMathFaceSource()
+	default:
+		return getPressStart2PFaceSource()
+	}
+}
+
+func ScreenDraw(size float64, x, y float64, colorName string, screen *ebiten.Image, line string, fontName ...string) {
+	font := ""
+	if len(fontName) > 0 {
+		font = fontName[0]
+	}
+
 	textFace := &text.GoTextFace{
-		Source: getPressStart2PFaceSource(),
+		Source: getFontSource(font),
 		Size:   config.GlobalConfig.TextDimension + size,
 	}
 
@@ -49,9 +82,14 @@ func ScreenDraw(size float64, x, y float64, colorName string, screen *ebiten.Ima
 	text.Draw(screen, line, textFace, textOptions)
 }
 
-func MeasureText(label string) (float64, float64) {
+func MeasureText(label string, fontName ...string) (float64, float64) {
+	font := ""
+	if len(fontName) > 0 {
+		font = fontName[0]
+	}
+
 	textFace := &text.GoTextFace{
-		Source: getPressStart2PFaceSource(),
+		Source: getFontSource(font),
 		Size:   config.GlobalConfig.TextDimension,
 	}
 
@@ -59,9 +97,33 @@ func MeasureText(label string) (float64, float64) {
 	return boundsX, boundsY
 }
 
+// MeasureTextWithSize measures text with a specific size and optional font
+func MeasureTextWithSize(label string, size float64, fontName ...string) (float64, float64) {
+	font := ""
+	if len(fontName) > 0 {
+		font = fontName[0]
+	}
+
+	textFace := &text.GoTextFace{
+		Source: getFontSource(font),
+		Size:   size,
+	}
+
+	boundsX, boundsY := text.Measure(label, textFace, size/10)
+	return boundsX, boundsY
+}
+
 // Gives x coord to place a message in the middle of the screen given the message and the font size
 func XCentered(message string, fontSize float64) float64 {
 	width := float64(len(message)) * fontSize
+	x := (float64(config.GlobalConfig.ScreenWidth) / 2) - (width / 2)
+	return x
+}
+
+// XCenteredWithFont gives x coord to place a message in the middle of the screen
+// using MeasureText for accurate positioning with the specified font
+func XCenteredWithFont(message string, fontSize float64, fontName string) float64 {
+	width, _ := MeasureTextWithSize(message, fontSize, fontName)
 	x := (float64(config.GlobalConfig.ScreenWidth) / 2) - (width / 2)
 	return x
 }

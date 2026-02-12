@@ -43,7 +43,8 @@ func (i *InclinedInputScene) Draw(screen *ebiten.Image) {
 	spacing := textDim * 1.5
 	startY := float64(config.GlobalConfig.ScreenHeight) * 0.2
 
-	utils.ScreenDraw(0, utils.XCentered("INCLINED PLANE SETUP", textDim), startY-textDim*1.2, "yellow", screen, "INCLINED PLANE SETUP")
+	title := "INCLINED PLANE SETUP"
+	utils.ScreenDraw(0, utils.XCenteredWithFont(title, textDim, "libertinus"), startY-textDim*1.2, "yellow", screen, title, "libertinus")
 
 	lines := []string{
 		"θ (0°-60°): " + i.renderInputValue(i.thetaInput, 0),
@@ -61,13 +62,13 @@ func (i *InclinedInputScene) Draw(screen *ebiten.Image) {
 			color = "cyan"
 		}
 		y := startY + float64(idx)*spacing
-		utils.ScreenDraw(0, utils.XCentered(line, textDim), y, color, screen, line)
+		utils.ScreenDraw(0, utils.XCenteredWithFont(line, textDim, "libertinus"), y, color, screen, line, "libertinus")
 	}
 
 	if i.validationMessage != "" {
 		y := startY + float64(len(lines))*spacing + textDim
 		smallText := textDim - (textDim / 4)
-		utils.ScreenDraw(-(textDim / 4), utils.XCentered(i.validationMessage, smallText), y, "red", screen, i.validationMessage)
+		utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(i.validationMessage, smallText, "libertinus"), y, "red", screen, i.validationMessage, "libertinus")
 	}
 
 	status := "Use arrows to move, Enter to confirm"
@@ -76,7 +77,7 @@ func (i *InclinedInputScene) Draw(screen *ebiten.Image) {
 	}
 	y := startY + float64(len(lines))*spacing + textDim*2.2
 	smallText := textDim - (textDim / 3)
-	utils.ScreenDraw(-(textDim / 3), utils.XCentered(status, smallText), y, "light gray", screen, status)
+	utils.ScreenDraw(-(textDim / 3), utils.XCenteredWithFont(status, smallText, "libertinus"), y, "light gray", screen, status, "libertinus")
 }
 
 func (i *InclinedInputScene) FirstLoad() {
@@ -413,7 +414,7 @@ func (i *InclinedInputScene) validateHBlock() bool {
 	// L'epsilon permette un piccolo margine di errore per evitare messaggi di validazione ingiusti.
 	const epsilon = 0.01
 	if hBlock > hMax+epsilon {
-		i.validationMessage = "h_block must be <= L*sin(theta) = " + strconv.FormatFloat(hMax, 'f', 2, 64) + " m"
+		i.validationMessage = "h_block must be <= L*sin(θ) = " + strconv.FormatFloat(hMax, 'f', 2, 64) + " m"
 		return false
 	}
 

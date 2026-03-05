@@ -8,96 +8,120 @@ import (
 )
 
 type Config struct {
-	Scale                  float64
-	Fullscreen             bool
-	Player1Name            string
-	Player2Name            string
-	InclinedTheta          float64
-	InclinedMuS            float64
-	InclinedMuK            float64
-	InclinedMass           float64
-	InclinedGravity        float64
-	InclinedLength         float64
-	InclinedHBlock         float64
-	InclinedMuSSet         bool
-	InclinedMuKSet         bool
-	InclinedGravitySet     bool
-	BallSpeed              int
-	BallSize               int
-	PaddleSpeed            int
-	PaddleHeight           int
-	PaddleDistanceFromWall int
-	PaddleWidth            int
-	Difficulty             float64
-	TextDimension          float64
-	ScreenWidth            int
-	ScreenHeight           int
-	PopupWidth             int
-	PopupHeight            int
-	OptionsPerSecond       time.Duration
-	MaxBounceAngle         float64
+	Scale                   float64
+	Fullscreen              bool
+	Player1Name             string
+	Player2Name             string
+	InclinedTheta           float64
+	InclinedMuS             float64
+	InclinedMuK             float64
+	InclinedMass            float64
+	InclinedGravity         float64
+	InclinedLength          float64
+	InclinedHBlock          float64
+	InclinedMuSSet          bool
+	InclinedMuKSet          bool
+	InclinedGravitySet      bool
+	InclinedWeightParallel  float64
+	InclinedWeightPerp      float64
+	InclinedNormal          float64
+	InclinedStaticFriction  float64
+	InclinedDynamicFriction float64
+	InclinedNetForce        float64
+	InclinedAcceleration    float64
+	InclinedSlides          bool
+	BallSpeed               int
+	BallSize                int
+	PaddleSpeed             int
+	PaddleHeight            int
+	PaddleDistanceFromWall  int
+	PaddleWidth             int
+	Difficulty              float64
+	TextDimension           float64
+	ScreenWidth             int
+	ScreenHeight            int
+	PopupWidth              int
+	PopupHeight             int
+	OptionsPerSecond        time.Duration
+	MaxBounceAngle          float64
 }
 
 var GlobalConfig = &Config{
-	Scale:                  1.0,
-	Fullscreen:             true,
-	Player1Name:            "Player 1",
-	Player2Name:            "Player 2",
-	InclinedTheta:          0,
-	InclinedMuS:            0,
-	InclinedMuK:            0,
-	InclinedMass:           0,
-	InclinedGravity:        9.8,
-	InclinedLength:         0,
-	InclinedHBlock:         0,
-	InclinedMuSSet:         false,
-	InclinedMuKSet:         false,
-	InclinedGravitySet:     false,
-	BallSpeed:              9,
-	BallSize:               22,
-	PaddleSpeed:            9,
-	PaddleHeight:           150,
-	PaddleDistanceFromWall: 60,
-	PaddleWidth:            22,
-	Difficulty:             0.5,
-	TextDimension:          30,
-	ScreenWidth:            960,
-	ScreenHeight:           720,
-	PopupWidth:             528, // 55% of height
-	PopupHeight:            216, // 30% of height
-	OptionsPerSecond:       time.Duration(time.Second / 4),
-	MaxBounceAngle:         0.7853975, //45.0 * (3.14159 / 180.0)
+	Scale:                   1.0,
+	Fullscreen:              true,
+	Player1Name:             "Player 1",
+	Player2Name:             "Player 2",
+	InclinedTheta:           0,
+	InclinedMuS:             0,
+	InclinedMuK:             0,
+	InclinedMass:            0,
+	InclinedGravity:         9.8,
+	InclinedLength:          0,
+	InclinedHBlock:          0,
+	InclinedMuSSet:          false,
+	InclinedMuKSet:          false,
+	InclinedGravitySet:      false,
+	InclinedWeightParallel:  0,
+	InclinedWeightPerp:      0,
+	InclinedNormal:          0,
+	InclinedStaticFriction:  0,
+	InclinedDynamicFriction: 0,
+	InclinedNetForce:        0,
+	InclinedAcceleration:    0,
+	InclinedSlides:          false,
+	BallSpeed:               9,
+	BallSize:                22,
+	PaddleSpeed:             9,
+	PaddleHeight:            150,
+	PaddleDistanceFromWall:  60,
+	PaddleWidth:             22,
+	Difficulty:              0.5,
+	TextDimension:           30,
+	ScreenWidth:             960,
+	ScreenHeight:            720,
+	PopupWidth:              528, // 55% of height
+	PopupHeight:             216, // 30% of height
+	OptionsPerSecond:        time.Duration(time.Second / 4),
+	MaxBounceAngle:          0.7853975, //45.0 * (3.14159 / 180.0)
 }
 
 var DefaultConfig = &Config{
-	Scale:                  1.0,
-	Fullscreen:             true,
-	Player1Name:            "Player 1",
-	Player2Name:            "Player 2",
-	InclinedTheta:          0,
-	InclinedMuS:            0,
-	InclinedMuK:            0,
-	InclinedMass:           0,
-	InclinedGravity:        9.8,
-	InclinedLength:         0,
-	InclinedHBlock:         0,
-	InclinedMuSSet:         false,
-	InclinedMuKSet:         false,
-	InclinedGravitySet:     false,
-	BallSpeed:              9,
-	BallSize:               22,
-	PaddleSpeed:            9,
-	PaddleHeight:           150,
-	PaddleDistanceFromWall: 60,
-	PaddleWidth:            22,
-	Difficulty:             0.5,
-	TextDimension:          30,
-	ScreenWidth:            960,
-	ScreenHeight:           720,
-	PopupWidth:             528, // 55% of height
-	PopupHeight:            216, // 30% of height
-	OptionsPerSecond:       time.Duration(time.Second / 4),
-	MaxBounceAngle:         0.7853975, //45.0 * (3.14159 / 180.0)
+	Scale:                   1.0,
+	Fullscreen:              true,
+	Player1Name:             "Player 1",
+	Player2Name:             "Player 2",
+	InclinedTheta:           0,
+	InclinedMuS:             0,
+	InclinedMuK:             0,
+	InclinedMass:            0,
+	InclinedGravity:         9.8,
+	InclinedLength:          0,
+	InclinedHBlock:          0,
+	InclinedMuSSet:          false,
+	InclinedMuKSet:          false,
+	InclinedGravitySet:      false,
+	InclinedWeightParallel:  0,
+	InclinedWeightPerp:      0,
+	InclinedNormal:          0,
+	InclinedStaticFriction:  0,
+	InclinedDynamicFriction: 0,
+	InclinedNetForce:        0,
+	InclinedAcceleration:    0,
+	InclinedSlides:          false,
+	BallSpeed:               9,
+	BallSize:                22,
+	PaddleSpeed:             9,
+	PaddleHeight:            150,
+	PaddleDistanceFromWall:  60,
+	PaddleWidth:             22,
+	Difficulty:              0.5,
+	TextDimension:           30,
+	ScreenWidth:             960,
+	ScreenHeight:            720,
+	PopupWidth:              528, // 55% of height
+	PopupHeight:             216, // 30% of height
+	OptionsPerSecond:        time.Duration(time.Second / 4),
+	MaxBounceAngle:          0.7853975, //45.0 * (3.14159 / 180.0)
 }
 
 // Applica la scala ai valori di default e aggiorna la config

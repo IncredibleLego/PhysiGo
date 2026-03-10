@@ -2,12 +2,16 @@ package scenes
 
 import (
 	"fmt"
+	"image/color"
+	"image/png"
 	"math"
+	"os"
 	"physiGo/config"
 	"physiGo/utils"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type inclinedPlaneSnapshot struct {
@@ -57,6 +61,9 @@ type InclinedPlaneScene struct {
 	simulationEnded     bool
 	simulationEndTime   float64
 	simulationEndHorizS float64
+
+	playImage  *ebiten.Image
+	pauseImage *ebiten.Image
 }
 
 func (i *InclinedPlaneScene) ShouldPreserveState(reason SceneChangeReason) bool {
@@ -158,6 +165,8 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 
 	controls := "Controls: SPACE start/pause, R reset simulation, ENTER pause menu"
 	utils.ScreenDraw(smallSize, leftX, float64(config.GlobalConfig.ScreenHeight)-textDim, "light gray", screen, controls, "libertinus")
+
+	i.drawTimelineControls(screen)
 }
 
 func (i *InclinedPlaneScene) FirstLoad() {
@@ -189,6 +198,7 @@ func (i *InclinedPlaneScene) FirstLoad() {
 
 	i.refreshCalculus()
 	i.resetSimulationFromSnapshot()
+	i.loadControlImages()
 }
 
 func (i *InclinedPlaneScene) OnEnter() {
@@ -199,7 +209,11 @@ func (i *InclinedPlaneScene) OnExit() {
 
 func (i *InclinedPlaneScene) Update() SceneId {
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		i.started = !i.started
+		i.toggleRunState()
+	}
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		i.handleMouseControl()
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
@@ -248,7 +262,7 @@ func (i *InclinedPlaneScene) resetSimulationFromSnapshot() {
 	i.completed = false
 	i.simTime = 0
 	i.simS = 0
-	i.simVelocity = 0
+	i.simVelocity = i.v0
 	i.simHBlock = i.initialHeight()
 	i.simHorizS = 0
 	i.phase = "ready"
@@ -275,21 +289,98 @@ func (i *InclinedPlaneScene) stepSimulation() {
 	}
 	dt := 1.0 / tps
 
-	a := i.calc.Acceleration
+	i.setSimulationTime(i.simTime + dt)
+}
 
-	i.simTime += dt
+func (i *InclinedPlaneScene) totalSimulationDuration() float64 {
+	if !i.calc.Slides {
+		return 0
+	}
+	if i.calc.StopsOnIncline {
+		return i.calc.TimeToBase
+	}
+	if i.calc.HorizontalDecel > 0 {
+		return i.calc.TimeToBase + i.calc.HorizontalStopTime
+	}
+	return i.calc.TimeToBase
+}
 
-	if i.phase == "ready" {
-		i.phase = "incline"
-		i.tPhaseStart = i.simTime
+func (i *InclinedPlaneScene) simulationProgress() float64 {
+	total := i.totalSimulationDuration()
+	if total <= 0 {
+		if i.completed {
+			return 1
+		}
+		return 0
+	}
+	p := i.simTime / total
+	if p < 0 {
+		return 0
+	}
+	if p > 1 {
+		return 1
+	}
+	return p
+}
+
+func (i *InclinedPlaneScene) setSimulationTime(t float64) {
+	if !i.calc.Slides {
+		i.simTime = 0
+		i.simS = 0
+		i.simHorizS = 0
+		i.simVelocity = i.calc.InitialVelocity
+		i.simHBlock = i.initialHeight()
+		i.phase = "ready"
+		i.completed = false
+		i.baseReached = false
+		i.simulationEnded = false
+		i.started = false
+		return
 	}
 
-	if i.phase == "incline" {
-		t := i.simTime - i.tPhaseStart
-		v0 := i.calc.InitialVelocity
-		i.simS = v0*t + 0.5*a*t*t
-		i.simVelocity = v0 + a*t
+	if t < 0 {
+		t = 0
+	}
 
+	total := i.totalSimulationDuration()
+	if total > 0 && i.calc.HorizontalDecel > 0 && t > total {
+		t = total
+	}
+
+	v0 := i.calc.InitialVelocity
+	a := i.calc.Acceleration
+
+	i.simTime = t
+	i.simS = 0
+	i.simHorizS = 0
+	i.simVelocity = v0
+	i.simHBlock = i.initialHeight()
+	i.phase = "ready"
+	i.tPhaseStart = 0
+	i.completed = false
+	i.baseReached = false
+	i.baseReachTime = 0
+	i.baseReachVelocity = 0
+	i.baseReachDistance = 0
+	i.simulationEnded = false
+	i.simulationEndTime = 0
+	i.simulationEndHorizS = 0
+
+	if t == 0 {
+		return
+	}
+
+	inclineTime := i.calc.TimeToBase
+
+	if i.calc.StopsOnIncline {
+		tIncline := t
+		if tIncline > inclineTime {
+			tIncline = inclineTime
+		}
+
+		i.phase = "incline"
+		i.simS = v0*tIncline + 0.5*a*tIncline*tIncline
+		i.simVelocity = v0 + a*tIncline
 		if i.simVelocity < 0 {
 			i.simVelocity = 0
 		}
@@ -297,31 +388,36 @@ func (i *InclinedPlaneScene) stepSimulation() {
 			i.simS = 0
 		}
 
-		if i.calc.StopsOnIncline && i.simS >= i.calc.StopDistanceOnIncline {
+		thetaRad := i.theta * math.Pi / 180.0
+		heightLost := i.simS * math.Sin(thetaRad)
+		i.simHBlock = i.initialHeight() - heightLost
+		if i.simHBlock < 0 {
+			i.simHBlock = 0
+		}
+
+		if t >= inclineTime {
 			i.simS = i.calc.StopDistanceOnIncline
 			i.simVelocity = 0
 			i.phase = "stopped"
 			i.completed = true
 			i.started = false
 			i.simulationEnded = true
-			i.simulationEndTime = i.calc.TimeToBase
+			i.simulationEndTime = inclineTime
 			i.simulationEndHorizS = 0
-			i.simTime = i.simulationEndTime
-			return
+			i.simTime = inclineTime
 		}
+		return
+	}
 
-		if i.simS >= i.calc.DistanceToBase {
-			i.simS = i.calc.DistanceToBase
-			i.simVelocity = i.calc.VelocityAtBase
-			i.simHBlock = 0
-			i.baseReached = true
-			i.baseReachTime = i.calc.TimeToBase
-			i.baseReachVelocity = i.simVelocity
-			i.baseReachDistance = i.simS
-			i.simTime = i.baseReachTime
-			i.phase = "horizontal"
-			i.tPhaseStart = i.simTime
-			return
+	if t < inclineTime {
+		i.phase = "incline"
+		i.simS = v0*t + 0.5*a*t*t
+		i.simVelocity = v0 + a*t
+		if i.simVelocity < 0 {
+			i.simVelocity = 0
+		}
+		if i.simS < 0 {
+			i.simS = 0
 		}
 
 		thetaRad := i.theta * math.Pi / 180.0
@@ -333,35 +429,165 @@ func (i *InclinedPlaneScene) stepSimulation() {
 		return
 	}
 
-	if i.phase == "horizontal" {
-		t := i.simTime - i.tPhaseStart
-		v0 := i.calc.VelocityAtBase
-		if i.calc.HorizontalDecel <= 0 {
-			i.simHorizS = v0 * t
-			i.simVelocity = v0
-			return
-		}
+	i.phase = "horizontal"
+	i.simS = i.calc.DistanceToBase
+	i.simHBlock = 0
+	i.baseReached = true
+	i.baseReachTime = inclineTime
+	i.baseReachVelocity = i.calc.VelocityAtBase
+	i.baseReachDistance = i.simS
 
-		decel := i.calc.HorizontalDecel
-		i.simHorizS = v0*t - 0.5*decel*t*t
-		i.simVelocity = v0 - decel*t
-		if i.simVelocity <= 0 {
-			i.simVelocity = 0
-			i.simHorizS = i.calc.HorizontalStopDist
-			i.phase = "stopped"
-			i.completed = true
-			i.started = false
-			i.simulationEnded = true
-			i.simulationEndTime = i.baseReachTime + i.calc.HorizontalStopTime
-			i.simulationEndHorizS = i.simHorizS
-			i.simTime = i.simulationEndTime
-		}
+	horizontalT := t - inclineTime
+	if horizontalT < 0 {
+		horizontalT = 0
+	}
+
+	if i.calc.HorizontalDecel <= 0 {
+		i.simHorizS = i.calc.VelocityAtBase * horizontalT
+		i.simVelocity = i.calc.VelocityAtBase
 		return
 	}
 
-	if i.phase == "stopped" {
+	vBase := i.calc.VelocityAtBase
+	decel := i.calc.HorizontalDecel
+	i.simHorizS = vBase*horizontalT - 0.5*decel*horizontalT*horizontalT
+	i.simVelocity = vBase - decel*horizontalT
+
+	if i.simVelocity <= 0 || horizontalT >= i.calc.HorizontalStopTime {
+		i.simVelocity = 0
+		i.simHorizS = i.calc.HorizontalStopDist
+		i.phase = "stopped"
 		i.completed = true
 		i.started = false
+		i.simulationEnded = true
+		i.simulationEndTime = inclineTime + i.calc.HorizontalStopTime
+		i.simulationEndHorizS = i.simHorizS
+		i.simTime = i.simulationEndTime
+	}
+}
+
+func (i *InclinedPlaneScene) toggleRunState() {
+	if !i.calc.Slides {
+		return
+	}
+	if i.completed {
+		i.setSimulationTime(0)
+	}
+	i.started = !i.started
+}
+
+func (i *InclinedPlaneScene) loadControlImages() {
+	load := func(path string) *ebiten.Image {
+		file, err := os.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer file.Close()
+
+		img, err := png.Decode(file)
+		if err != nil {
+			return nil
+		}
+
+		return ebiten.NewImageFromImage(img)
+	}
+
+	i.playImage = load("img/play.png")
+	i.pauseImage = load("img/pause.png")
+}
+
+func (i *InclinedPlaneScene) playButtonRect() (float64, float64, float64, float64) {
+	textDim := config.GlobalConfig.TextDimension
+	buttonSize := textDim * 1.25
+	barX := float64(config.GlobalConfig.ScreenWidth) * 0.2
+	barY := float64(config.GlobalConfig.ScreenHeight) - textDim*2.1
+	buttonX := barX - buttonSize - textDim*0.45
+	buttonY := barY - (buttonSize-textDim*0.5)/2
+	return buttonX, buttonY, buttonSize, buttonSize
+}
+
+func (i *InclinedPlaneScene) progressBarRect() (float64, float64, float64, float64) {
+	textDim := config.GlobalConfig.TextDimension
+	barX := float64(config.GlobalConfig.ScreenWidth) * 0.2
+	barW := float64(config.GlobalConfig.ScreenWidth) * 0.6
+	barH := textDim * 0.45
+	barY := float64(config.GlobalConfig.ScreenHeight) - textDim*2.0
+	return barX, barY, barW, barH
+}
+
+func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
+	btnX, btnY, btnW, btnH := i.playButtonRect()
+	barX, barY, barW, barH := i.progressBarRect()
+
+	vector.DrawFilledRect(screen, float32(btnX), float32(btnY), float32(btnW), float32(btnH), color.RGBA{40, 40, 40, 255}, false)
+
+	icon := i.playImage
+	if !i.started && !i.completed {
+		icon = i.pauseImage
+	}
+
+	if icon != nil {
+		imgW, imgH := icon.Bounds().Dx(), icon.Bounds().Dy()
+		if imgW > 0 && imgH > 0 {
+			scale := math.Min(btnW*0.8/float64(imgW), btnH*0.8/float64(imgH))
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(scale, scale)
+			drawW := float64(imgW) * scale
+			drawH := float64(imgH) * scale
+			op.GeoM.Translate(btnX+(btnW-drawW)/2, btnY+(btnH-drawH)/2)
+			screen.DrawImage(icon, op)
+		}
+	} else {
+		label := "PLAY"
+		if !i.started && !i.completed {
+			label = "PAUSE"
+		}
+		x := btnX + btnW*0.12
+		y := btnY + btnH*0.68
+		utils.ScreenDraw(-(config.GlobalConfig.TextDimension / 2.2), x, y, "white", screen, label, "libertinus")
+	}
+
+	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW), float32(barH), color.RGBA{55, 55, 55, 255}, false)
+	progress := i.simulationProgress()
+	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW*progress), float32(barH), color.RGBA{30, 170, 90, 255}, false)
+
+	knobX := barX + barW*progress
+	if knobX < barX {
+		knobX = barX
+	}
+	if knobX > barX+barW {
+		knobX = barX + barW
+	}
+	vector.DrawFilledRect(screen, float32(knobX-2), float32(barY-4), 4, float32(barH+8), color.RGBA{230, 230, 230, 255}, false)
+}
+
+func (i *InclinedPlaneScene) handleMouseControl() {
+	mx, my := ebiten.CursorPosition()
+	px := float64(mx)
+	py := float64(my)
+
+	btnX, btnY, btnW, btnH := i.playButtonRect()
+	if px >= btnX && px <= btnX+btnW && py >= btnY && py <= btnY+btnH {
+		i.toggleRunState()
+		return
+	}
+
+	barX, barY, barW, barH := i.progressBarRect()
+	if px >= barX && px <= barX+barW && py >= barY && py <= barY+barH {
+		total := i.totalSimulationDuration()
+		if total <= 0 {
+			return
+		}
+		wasRunning := i.started
+		progress := (px - barX) / barW
+		if progress < 0 {
+			progress = 0
+		}
+		if progress > 1 {
+			progress = 1
+		}
+		i.setSimulationTime(total * progress)
+		i.started = wasRunning && !i.completed
 	}
 }
 

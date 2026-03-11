@@ -2,8 +2,10 @@ package scenes
 
 import (
 	"fmt"
+	"image"
 	"image/color"
-	"image/png"
+	_ "image/jpeg"
+	_ "image/png"
 	"math"
 	"os"
 	"physiGo/config"
@@ -64,6 +66,9 @@ type InclinedPlaneScene struct {
 
 	playImage  *ebiten.Image
 	pauseImage *ebiten.Image
+	planeImage *ebiten.Image
+	blockImage *ebiten.Image
+	whiteImage *ebiten.Image
 }
 
 func (i *InclinedPlaneScene) ShouldPreserveState(reason SceneChangeReason) bool {
@@ -78,11 +83,13 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 	screen.Clear()
 
 	textDim := config.GlobalConfig.TextDimension
-	leftX := textDim / 3
-	rightX := float64(config.GlobalConfig.ScreenWidth) * 0.54
-	y := textDim * 1.2
-	step := textDim * 0.9
-	smallSize := -(textDim / 4)
+	sw := float64(config.GlobalConfig.ScreenWidth)
+	sh := float64(config.GlobalConfig.ScreenHeight)
+	leftX := sw * 0.03
+	rightX := sw * 0.80
+	y := textDim * 0.75
+	step := textDim * 0.68
+	smallSize := -(textDim * 0.54)
 
 	status := "REST - Press SPACE to start"
 	if i.started && !i.completed {
@@ -124,47 +131,87 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 		fmt.Sprintf("slides: %t", i.calc.Slides),
 	}
 
+	liveDataBottom := y + float64(len(leftLines))*step + textDim*0.25
+	i.drawInclinedPlane(screen, liveDataBottom)
+
 	for idx, line := range leftLines {
-		color := "white"
+		col := "white"
 		if idx == 0 {
-			color = "yellow"
+			col = "yellow"
 		}
 		if idx == 1 {
-			color = "cyan"
+			col = "cyan"
 		}
-		utils.ScreenDraw(smallSize, leftX, y+float64(idx)*step, color, screen, line, "libertinus")
+		utils.ScreenDraw(smallSize, leftX, y+float64(idx)*step, col, screen, line, "libertinus")
 	}
 
 	for idx, line := range rightLines {
-		color := "white"
+		col := "white"
 		if idx == 0 {
-			color = "yellow"
+			col = "yellow"
 		}
-		utils.ScreenDraw(smallSize, rightX, y+float64(idx)*step, color, screen, line, "libertinus")
+		utils.ScreenDraw(smallSize, rightX, y+float64(idx)*step, col, screen, line, "libertinus")
 	}
 
-	eventsY := y + float64(len(leftLines))*step + textDim*0.6
+	resultY := textDim * 0.78
+	resultGap := step * 0.9
+	textSize := textDim + smallSize
+	if textSize < 8 {
+		textSize = 8
+	}
+	drawCentered := func(line, col string, yy float64) {
+		w, _ := utils.MeasureTextWithSize(line, textSize, "libertinus")
+		x := sw/2 - w/2
+		utils.ScreenDraw(smallSize, x, yy, col, screen, line, "libertinus")
+	}
+
+	resultLines := make([]struct {
+		text string
+		col  string
+	}, 0, 3)
 	if i.baseReached {
-		event := fmt.Sprintf("BASE REACHED: t=%.2fs, s=%.2fm, v=%.2fm/s, a=%.3fm/s^2", i.baseReachTime, i.baseReachDistance, i.baseReachVelocity, i.calc.Acceleration)
-		utils.ScreenDraw(smallSize, leftX, eventsY, "green", screen, event, "libertinus")
-		eventsY += step
+		resultLines = append(resultLines, struct {
+			text string
+			col  string
+		}{
+			text: fmt.Sprintf("BASE t=%.2fs  v=%.2fm/s", i.baseReachTime, i.baseReachVelocity),
+			col:  "green",
+		})
 	}
 	if i.simulationEnded {
-		event := fmt.Sprintf("SIM END: t=%.2fs, x_stop=%.2fm, a_h=%.3fm/s^2", i.simulationEndTime, i.simulationEndHorizS, -i.calc.HorizontalDecel)
-		utils.ScreenDraw(smallSize, leftX, eventsY, "green", screen, event, "libertinus")
-		eventsY += step
+		resultLines = append(resultLines, struct {
+			text string
+			col  string
+		}{
+			text: fmt.Sprintf("STOP t=%.2fs  x=%.2fm", i.simulationEndTime, i.simulationEndHorizS),
+			col:  "green",
+		})
 	}
 	if i.baseReached && !i.simulationEnded && i.calc.HorizontalDecel <= 0 {
-		event := "No horizontal friction: block keeps moving"
-		utils.ScreenDraw(smallSize, leftX, eventsY, "orange", screen, event, "libertinus")
+		resultLines = append(resultLines, struct {
+			text string
+			col  string
+		}{
+			text: "No horizontal friction",
+			col:  "orange",
+		})
 	}
 	if !i.calc.Slides {
-		event := "BLOCK DOES NOT MOVE: P|| <= Fs,max"
-		utils.ScreenDraw(smallSize, leftX, eventsY, "red", screen, event, "libertinus")
+		resultLines = append(resultLines, struct {
+			text string
+			col  string
+		}{
+			text: "BLOCK DOES NOT MOVE",
+			col:  "red",
+		})
 	}
 
-	controls := "Controls: SPACE start/pause, R reset simulation, ENTER pause menu"
-	utils.ScreenDraw(smallSize, leftX, float64(config.GlobalConfig.ScreenHeight)-textDim, "light gray", screen, controls, "libertinus")
+	for idx, line := range resultLines {
+		drawCentered(line.text, line.col, resultY+float64(idx)*resultGap)
+	}
+
+	controls := "SPACE: start/pause  <-/->: scrub timeline  R: reset  ENTER: menu"
+	utils.ScreenDraw(smallSize, textDim/3, sh-textDim*0.9, "light gray", screen, controls, "libertinus")
 
 	i.drawTimelineControls(screen)
 }
@@ -212,6 +259,8 @@ func (i *InclinedPlaneScene) Update() SceneId {
 		i.toggleRunState()
 	}
 
+	i.handleKeyboardScrub()
+
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		i.handleMouseControl()
 	}
@@ -227,6 +276,35 @@ func (i *InclinedPlaneScene) Update() SceneId {
 	}
 
 	return InclinedPlaneSceneId
+}
+
+func (i *InclinedPlaneScene) handleKeyboardScrub() {
+	total := i.totalSimulationDuration()
+	if total <= 0 {
+		return
+	}
+
+	step := total * 0.02
+	if step < 0.05 {
+		step = 0.05
+	}
+
+	advance := func(key ebiten.Key, delta float64) {
+		pressed := inpututil.IsKeyJustPressed(key)
+		dur := inpututil.KeyPressDuration(key)
+		if !pressed && dur > 10 && dur%3 == 0 {
+			pressed = true
+		}
+		if !pressed {
+			return
+		}
+		i.started = false
+		i.completed = false
+		i.setSimulationTime(i.simTime + delta)
+	}
+
+	advance(ebiten.KeyArrowRight, step)
+	advance(ebiten.KeyArrowLeft, -step)
 }
 
 func (i *InclinedPlaneScene) refreshCalculus() {
@@ -501,17 +579,19 @@ func (i *InclinedPlaneScene) loadControlImages() {
 			return nil
 		}
 		defer file.Close()
-
-		img, err := png.Decode(file)
+		img, _, err := image.Decode(file)
 		if err != nil {
 			return nil
 		}
-
 		return ebiten.NewImageFromImage(img)
 	}
 
 	i.playImage = load("img/play.png")
 	i.pauseImage = load("img/pause.png")
+	i.planeImage = load("img/plane.jpg")
+	i.blockImage = load("img/block.png")
+	i.whiteImage = ebiten.NewImage(1, 1)
+	i.whiteImage.Fill(color.White)
 }
 
 func (i *InclinedPlaneScene) playButtonRect() (float64, float64, float64, float64) {
@@ -658,6 +738,186 @@ func (i *InclinedPlaneScene) currentAcceleration() float64 {
 		return 0
 	}
 	return i.calc.Acceleration
+}
+
+func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBottom float64) {
+	if i.theta <= 0 || i.length <= 0 {
+		return
+	}
+
+	thetaRad := i.theta * math.Pi / 180.0
+	cosTheta := math.Cos(thetaRad)
+
+	sw := float64(config.GlobalConfig.ScreenWidth)
+	sh := float64(config.GlobalConfig.ScreenHeight)
+	textDim := config.GlobalConfig.TextDimension
+
+	// Area disponibile per la rappresentazione (triangolo + tratto orizzontale)
+	leftMargin := sw * 0.03
+	actionRight := sw * 0.95
+	triBaseY := sh * 0.87
+	maxTopY := liveDataBottom + textDim*0.2
+	maxH := triBaseY - maxTopY
+	if maxH < sh*0.18 {
+		maxH = sh * 0.18
+	}
+	triX0 := leftMargin
+
+	// Triangolo: vertice in alto a sinistra (triX0, triTopY) → apex
+	//            angolo retto in basso a sinistra (triX0, triBaseY)
+	//            angolo θ in basso a destra (triX1, triBaseY)
+	inclineHorizontalMeters := i.length * cosTheta
+	if inclineHorizontalMeters < 0.001 {
+		inclineHorizontalMeters = 0.001
+	}
+	horizontalMeters := i.calc.HorizontalStopDist
+	if horizontalMeters <= 0 {
+		horizontalMeters = inclineHorizontalMeters * 1.4
+	} else {
+		// Lascia margine oltre il punto di arresto (es. 7m -> 10m)
+		horizontalMeters *= 10.0 / 7.0
+	}
+	actionMeters := inclineHorizontalMeters + horizontalMeters
+	if actionMeters < 0.001 {
+		actionMeters = 0.001
+	}
+
+	pxPerMeter := (actionRight - leftMargin) / actionMeters
+	triBaseW := inclineHorizontalMeters * pxPerMeter
+	triH := triBaseW * math.Tan(thetaRad)
+	if triH > maxH {
+		scale := maxH / triH
+		triH = maxH
+		triBaseW *= scale
+		pxPerMeter *= scale
+	}
+	triX1 := triX0 + triBaseW
+	triTopY := triBaseY - triH
+
+	// Linea del suolo
+	vector.StrokeLine(screen,
+		float32(triX0), float32(triBaseY)+2,
+		float32(actionRight), float32(triBaseY)+2,
+		3, color.RGBA{160, 140, 100, 200}, false)
+
+	// Triangolo riempito con plane.jpg
+	if i.planeImage != nil {
+		imgW := float32(i.planeImage.Bounds().Dx())
+		imgH := float32(i.planeImage.Bounds().Dy())
+		vertices := []ebiten.Vertex{
+			{DstX: float32(triX0), DstY: float32(triTopY), SrcX: 0, SrcY: 0, ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
+			{DstX: float32(triX0), DstY: float32(triBaseY), SrcX: 0, SrcY: imgH, ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
+			{DstX: float32(triX1), DstY: float32(triBaseY), SrcX: imgW, SrcY: imgH, ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
+		}
+		screen.DrawTriangles(vertices, []uint16{0, 1, 2}, i.planeImage, &ebiten.DrawTrianglesOptions{})
+	} else if i.whiteImage != nil {
+		vertices := []ebiten.Vertex{
+			{DstX: float32(triX0), DstY: float32(triTopY), SrcX: 0, SrcY: 0, ColorR: 0.55, ColorG: 0.45, ColorB: 0.25, ColorA: 1},
+			{DstX: float32(triX0), DstY: float32(triBaseY), SrcX: 0, SrcY: 0, ColorR: 0.55, ColorG: 0.45, ColorB: 0.25, ColorA: 1},
+			{DstX: float32(triX1), DstY: float32(triBaseY), SrcX: 0, SrcY: 0, ColorR: 0.55, ColorG: 0.45, ColorB: 0.25, ColorA: 1},
+		}
+		screen.DrawTriangles(vertices, []uint16{0, 1, 2}, i.whiteImage, &ebiten.DrawTrianglesOptions{})
+	}
+
+	// Contorno del triangolo
+	outlineColor := color.RGBA{210, 210, 210, 255}
+	lw := float32(2.5)
+	vector.StrokeLine(screen, float32(triX0), float32(triTopY), float32(triX0), float32(triBaseY), lw, outlineColor, false)
+	vector.StrokeLine(screen, float32(triX0), float32(triBaseY), float32(triX1), float32(triBaseY), lw, outlineColor, false)
+	vector.StrokeLine(screen, float32(triX1), float32(triBaseY), float32(triX0), float32(triTopY), lw, outlineColor, false)
+
+	// Marcatore angolo retto in basso a sinistra
+	sqSize := float32(math.Min(triBaseW, triH) * 0.035)
+	if sqSize < 6 {
+		sqSize = 6
+	}
+	sqColor := color.RGBA{200, 200, 200, 180}
+	vector.StrokeLine(screen, float32(triX0)+sqSize, float32(triBaseY), float32(triX0)+sqSize, float32(triBaseY)-sqSize, 1.5, sqColor, false)
+	vector.StrokeLine(screen, float32(triX0), float32(triBaseY)-sqSize, float32(triX0)+sqSize, float32(triBaseY)-sqSize, 1.5, sqColor, false)
+
+	// Arco angolo θ in basso a destra
+	arcRadius := float32(math.Min(triBaseW*0.12, 55))
+	if arcRadius < 14 {
+		arcRadius = 14
+	}
+	steps := 24
+	for s := 0; s < steps; s++ {
+		a0 := math.Pi - (thetaRad*float64(s))/float64(steps)
+		a1 := math.Pi - (thetaRad*float64(s+1))/float64(steps)
+		x0 := triX1 + float64(arcRadius)*math.Cos(a0)
+		y0 := triBaseY - float64(arcRadius)*math.Sin(a0)
+		x1 := triX1 + float64(arcRadius)*math.Cos(a1)
+		y1 := triBaseY - float64(arcRadius)*math.Sin(a1)
+		vector.StrokeLine(screen, float32(x0), float32(y0), float32(x1), float32(y1), 2, color.RGBA{255, 220, 40, 230}, false)
+	}
+
+	// Etichetta θ
+	labelX := triX0 + triBaseW*0.06
+	labelY := triBaseY - float64(arcRadius)*1.15
+	angleText := fmt.Sprintf("θ=%.1f°", i.theta)
+	utils.ScreenDraw(-(textDim * 0.4), labelX+1.5, labelY+1.5, "black", screen, angleText, "libertinus")
+	utils.ScreenDraw(-(textDim * 0.4), labelX, labelY, "cyan", screen, angleText, "libertinus")
+
+	// Blocco
+	if i.blockImage == nil {
+		return
+	}
+	bImgW := float64(i.blockImage.Bounds().Dx())
+	bImgH := float64(i.blockImage.Bounds().Dy())
+	slopePixels := math.Sqrt(triBaseW*triBaseW + triH*triH)
+	targetSide := math.Min(slopePixels*0.10, sh*0.095)
+	if targetSide < slopePixels*0.07 {
+		targetSide = slopePixels * 0.07
+	}
+	if targetSide < 10 {
+		targetSide = 10
+	}
+	bScale := targetSide / math.Max(bImgW, bImgH)
+	bW := bImgW * bScale
+	bH := bImgH * bScale
+
+	slopeLen := i.length
+	distToBase := i.calc.DistanceToBase
+	if distToBase > slopeLen {
+		distToBase = slopeLen
+	}
+
+	if i.phase == "horizontal" || i.phase == "stopped" {
+		// Blocco sul piano orizzontale dopo la base del piano inclinato
+		gx := triX1 + i.simHorizS*pxPerMeter
+		if gx > actionRight {
+			gx = actionRight
+		}
+		contactInset := 1.5
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(bScale, bScale)
+		op.GeoM.Translate(-bW, -bH)
+		op.GeoM.Translate(gx, triBaseY+contactInset)
+		screen.DrawImage(i.blockImage, op)
+		return
+	}
+
+	// Blocco sul piano inclinato (fasi "ready" e "incline")
+	// Riferimento: vertice in basso a destra (base del piano)
+	distFromBase := distToBase - i.simS
+	if distFromBase < 0 {
+		distFromBase = 0
+	}
+	if distFromBase > slopeLen {
+		distFromBase = slopeLen
+	}
+	dPix := distFromBase * pxPerMeter
+	sxTouch := triX1 - dPix*math.Cos(thetaRad)
+	syTouch := triBaseY - dPix*math.Sin(thetaRad)
+	contactInset := 1.5
+	sx := sxTouch - math.Sin(thetaRad)*contactInset
+	sy := syTouch + math.Cos(thetaRad)*contactInset
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(bScale, bScale)
+	op.GeoM.Translate(-bW, -bH)
+	op.GeoM.Rotate(thetaRad)
+	op.GeoM.Translate(sx, sy)
+	screen.DrawImage(i.blockImage, op)
 }
 
 var _ Scene = (*InclinedPlaneScene)(nil)

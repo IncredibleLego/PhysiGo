@@ -145,7 +145,7 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 
 	eventsY := y + float64(len(leftLines))*step + textDim*0.6
 	if i.baseReached {
-		event := fmt.Sprintf("BASE REACHED: t=%.2fs, s=%.2fm, v=%.2fm/s", i.baseReachTime, i.baseReachDistance, i.baseReachVelocity)
+		event := fmt.Sprintf("BASE REACHED: t=%.2fs, s=%.2fm, v=%.2fm/s, a=%.3fm/s^2", i.baseReachTime, i.baseReachDistance, i.baseReachVelocity, i.calc.Acceleration)
 		utils.ScreenDraw(smallSize, leftX, eventsY, "green", screen, event, "libertinus")
 		eventsY += step
 	}
@@ -314,6 +314,24 @@ func (i *InclinedPlaneScene) simulationProgress() float64 {
 		return 0
 	}
 	p := i.simTime / total
+	if p < 0 {
+		return 0
+	}
+	if p > 1 {
+		return 1
+	}
+	return p
+}
+
+func (i *InclinedPlaneScene) baseReachProgress() float64 {
+	if !i.calc.Slides || i.calc.StopsOnIncline || i.calc.TimeToBase <= 0 {
+		return -1
+	}
+	total := i.totalSimulationDuration()
+	if total <= 0 {
+		return -1
+	}
+	p := i.calc.TimeToBase / total
 	if p < 0 {
 		return 0
 	}
@@ -522,7 +540,7 @@ func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 	vector.DrawFilledRect(screen, float32(btnX), float32(btnY), float32(btnW), float32(btnH), color.RGBA{40, 40, 40, 255}, false)
 
 	icon := i.playImage
-	if !i.started && !i.completed {
+	if i.started && !i.completed {
 		icon = i.pauseImage
 	}
 
@@ -539,7 +557,7 @@ func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 		}
 	} else {
 		label := "PLAY"
-		if !i.started && !i.completed {
+		if i.started && !i.completed {
 			label = "PAUSE"
 		}
 		x := btnX + btnW*0.12
@@ -550,6 +568,12 @@ func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW), float32(barH), color.RGBA{55, 55, 55, 255}, false)
 	progress := i.simulationProgress()
 	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW*progress), float32(barH), color.RGBA{30, 170, 90, 255}, false)
+
+	baseProgress := i.baseReachProgress()
+	if baseProgress >= 0 {
+		baseX := barX + barW*baseProgress
+		vector.DrawFilledRect(screen, float32(baseX-2), float32(barY-3), 4, float32(barH+6), color.RGBA{240, 95, 40, 255}, false)
+	}
 
 	knobX := barX + barW*progress
 	if knobX < barX {

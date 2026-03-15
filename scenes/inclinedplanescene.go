@@ -31,38 +31,10 @@ type inclinedPlaneSnapshot struct {
 }
 
 type InclinedPlaneScene struct {
-	theta   float64
-	muS     float64
-	muK     float64
-	mass    float64
-	gravity float64
-	length  float64
-	hBlock  float64
-	v0      float64
-
-	muSSet     bool
-	muKSet     bool
-	gravitySet bool
-
-	calc        InclinedPlaneCalculus
-	snapshot    inclinedPlaneSnapshot
-	started     bool
-	completed   bool
-	simTime     float64
-	simS        float64
-	simVelocity float64
-	simHBlock   float64
-	simHorizS   float64
-	phase       string
-	tPhaseStart float64
-
-	baseReached         bool
-	baseReachTime       float64
-	baseReachVelocity   float64
-	baseReachDistance   float64
-	simulationEnded     bool
-	simulationEndTime   float64
-	simulationEndHorizS float64
+	calc     InclinedPlaneCalculus
+	snapshot inclinedPlaneSnapshot
+	simState InclinedPlaneSimState
+	started  bool
 
 	playImage  *ebiten.Image
 	pauseImage *ebiten.Image
@@ -92,37 +64,37 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 	smallSize := -(textDim * 0.54)
 
 	status := "REST - Press SPACE to start"
-	if i.started && !i.completed {
+	if i.started && !i.simState.Completed {
 		status = "RUNNING - Press SPACE to pause"
 	}
-	if i.completed {
+	if i.simState.Completed {
 		status = "COMPLETED - Press R to reset"
 	}
 
 	leftLines := []string{
 		"LIVE DATA",
 		fmt.Sprintf("status: %s", status),
-		fmt.Sprintf("phase: %s", i.phase),
-		fmt.Sprintf("t: %.2f s", i.simTime),
-		fmt.Sprintf("a: %.2f m/s^2", i.currentAcceleration()),
-		fmt.Sprintf("v: %.2f m/s", i.simVelocity),
-		fmt.Sprintf("s (incline): %.2f m", i.simS),
-		fmt.Sprintf("x (ground): %.2f m", i.simHorizS),
-		fmt.Sprintf("h block: %.2f m", i.simHBlock),
-		fmt.Sprintf("dist from base: %.2f m", i.distanceFromBase()),
-		fmt.Sprintf("dist from origin: %.2f m", i.simS+i.simHorizS),
+		fmt.Sprintf("phase: %s", i.simState.Phase),
+		fmt.Sprintf("t: %.2f s", i.simState.Time),
+		fmt.Sprintf("a: %.2f m/s^2", i.calc.CurrentAcceleration(i.simState.Phase)),
+		fmt.Sprintf("v: %.2f m/s", i.simState.Velocity),
+		fmt.Sprintf("s (incline): %.2f m", i.simState.S),
+		fmt.Sprintf("x (ground): %.2f m", i.simState.HorizS),
+		fmt.Sprintf("h block: %.2f m", i.simState.HBlock),
+		fmt.Sprintf("dist from base: %.2f m", i.calc.DistanceFromBase(i.simState.S, i.simState.Phase)),
+		fmt.Sprintf("dist from origin: %.2f m", i.simState.S+i.simState.HorizS),
 	}
 
 	rightLines := []string{
 		"PLANE DATA",
-		fmt.Sprintf("mass: %.1f kg", i.mass),
-		fmt.Sprintf("gravity: %.1f m/s^2", i.gravity),
-		fmt.Sprintf("θ: %.1f°", i.theta),
-		fmt.Sprintf("length L: %.1f m", i.length),
-		fmt.Sprintf("h0 block: %.1f m", i.initialHeight()),
-		fmt.Sprintf("v0: %.1f m/s", i.v0),
-		fmt.Sprintf("μ_s: %.2f", i.muS),
-		fmt.Sprintf("μ_k: %.2f", i.muK),
+		fmt.Sprintf("mass: %.1f kg", i.snapshot.mass),
+		fmt.Sprintf("gravity: %.1f m/s^2", i.snapshot.gravity),
+		fmt.Sprintf("θ: %.1f°", i.snapshot.theta),
+		fmt.Sprintf("length L: %.1f m", i.snapshot.length),
+		fmt.Sprintf("h0 block: %.1f m", i.calc.InitialHeight),
+		fmt.Sprintf("v0: %.1f m/s", i.snapshot.v0),
+		fmt.Sprintf("μ_s: %.2f", i.snapshot.muS),
+		fmt.Sprintf("μ_k: %.2f", i.snapshot.muK),
 		fmt.Sprintf("P||: %.1f N", i.calc.WeightParallel),
 		fmt.Sprintf("N: %.1f N", i.calc.Normal),
 		fmt.Sprintf("Fs,max: %.1f N", i.calc.StaticFrictionMax),
@@ -169,25 +141,25 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 		text string
 		col  string
 	}, 0, 3)
-	if i.baseReached {
+	if i.simState.BaseReached {
 		resultLines = append(resultLines, struct {
 			text string
 			col  string
 		}{
-			text: fmt.Sprintf("BASE t=%.2fs  v=%.2fm/s", i.baseReachTime, i.baseReachVelocity),
+			text: fmt.Sprintf("BASE t=%.2fs  v=%.2fm/s", i.simState.BaseReachTime, i.simState.BaseReachVelocity),
 			col:  "green",
 		})
 	}
-	if i.simulationEnded {
+	if i.simState.SimulationEnded {
 		resultLines = append(resultLines, struct {
 			text string
 			col  string
 		}{
-			text: fmt.Sprintf("STOP t=%.2fs  x=%.2fm", i.simulationEndTime, i.simulationEndHorizS),
+			text: fmt.Sprintf("STOP t=%.2fs  x=%.2fm", i.simState.SimulationEndTime, i.simState.SimulationEndHorizS),
 			col:  "green",
 		})
 	}
-	if i.baseReached && !i.simulationEnded && i.calc.HorizontalDecel <= 0 {
+	if i.simState.BaseReached && !i.simState.SimulationEnded && i.calc.HorizontalDecel <= 0 {
 		resultLines = append(resultLines, struct {
 			text string
 			col  string
@@ -217,30 +189,18 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 }
 
 func (i *InclinedPlaneScene) FirstLoad() {
-	i.theta = config.GlobalConfig.InclinedTheta
-	i.muS = config.GlobalConfig.InclinedMuS
-	i.muK = config.GlobalConfig.InclinedMuK
-	i.mass = config.GlobalConfig.InclinedMass
-	i.gravity = config.GlobalConfig.InclinedGravity
-	i.length = config.GlobalConfig.InclinedLength
-	i.hBlock = config.GlobalConfig.InclinedHBlock
-	i.v0 = config.GlobalConfig.InclinedInitialVelocity
-	i.muSSet = config.GlobalConfig.InclinedMuSSet
-	i.muKSet = config.GlobalConfig.InclinedMuKSet
-	i.gravitySet = config.GlobalConfig.InclinedGravitySet
-
 	i.snapshot = inclinedPlaneSnapshot{
-		theta:      i.theta,
-		muS:        i.muS,
-		muK:        i.muK,
-		mass:       i.mass,
-		gravity:    i.gravity,
-		length:     i.length,
-		hBlock:     i.hBlock,
-		v0:         i.v0,
-		muSSet:     i.muSSet,
-		muKSet:     i.muKSet,
-		gravitySet: i.gravitySet,
+		theta:      config.GlobalConfig.InclinedTheta,
+		muS:        config.GlobalConfig.InclinedMuS,
+		muK:        config.GlobalConfig.InclinedMuK,
+		mass:       config.GlobalConfig.InclinedMass,
+		gravity:    config.GlobalConfig.InclinedGravity,
+		length:     config.GlobalConfig.InclinedLength,
+		hBlock:     config.GlobalConfig.InclinedHBlock,
+		v0:         config.GlobalConfig.InclinedInitialVelocity,
+		muSSet:     config.GlobalConfig.InclinedMuSSet,
+		muKSet:     config.GlobalConfig.InclinedMuKSet,
+		gravitySet: config.GlobalConfig.InclinedGravitySet,
 	}
 
 	i.refreshCalculus()
@@ -279,7 +239,7 @@ func (i *InclinedPlaneScene) Update() SceneId {
 }
 
 func (i *InclinedPlaneScene) handleKeyboardScrub() {
-	total := i.totalSimulationDuration()
+	total := i.calc.TotalDuration()
 	if total <= 0 {
 		return
 	}
@@ -299,8 +259,7 @@ func (i *InclinedPlaneScene) handleKeyboardScrub() {
 			return
 		}
 		i.started = false
-		i.completed = false
-		i.setSimulationTime(i.simTime + delta)
+		i.simState = i.calc.ComputeStateAtTime(i.simState.Time + delta)
 	}
 
 	advance(ebiten.KeyArrowRight, step)
@@ -308,56 +267,29 @@ func (i *InclinedPlaneScene) handleKeyboardScrub() {
 }
 
 func (i *InclinedPlaneScene) refreshCalculus() {
-	i.calc = ComputeInclinedPlaneCalculus(&config.Config{
-		InclinedTheta:           i.theta,
-		InclinedMuS:             i.muS,
-		InclinedMuK:             i.muK,
-		InclinedMass:            i.mass,
-		InclinedGravity:         i.gravity,
-		InclinedLength:          i.length,
-		InclinedHBlock:          i.hBlock,
-		InclinedInitialVelocity: i.v0,
-		InclinedMuSSet:          i.muSSet,
-		InclinedMuKSet:          i.muKSet,
-		InclinedGravitySet:      i.gravitySet,
-	})
+	i.calc = ComputeInclinedPlaneCalculus(config.GlobalConfig)
 }
 
 func (i *InclinedPlaneScene) resetSimulationFromSnapshot() {
-	i.theta = i.snapshot.theta
-	i.muS = i.snapshot.muS
-	i.muK = i.snapshot.muK
-	i.mass = i.snapshot.mass
-	i.gravity = i.snapshot.gravity
-	i.length = i.snapshot.length
-	i.hBlock = i.snapshot.hBlock
-	i.v0 = i.snapshot.v0
-	i.muSSet = i.snapshot.muSSet
-	i.muKSet = i.snapshot.muKSet
-	i.gravitySet = i.snapshot.gravitySet
+	config.GlobalConfig.InclinedTheta = i.snapshot.theta
+	config.GlobalConfig.InclinedMuS = i.snapshot.muS
+	config.GlobalConfig.InclinedMuK = i.snapshot.muK
+	config.GlobalConfig.InclinedMass = i.snapshot.mass
+	config.GlobalConfig.InclinedGravity = i.snapshot.gravity
+	config.GlobalConfig.InclinedLength = i.snapshot.length
+	config.GlobalConfig.InclinedHBlock = i.snapshot.hBlock
+	config.GlobalConfig.InclinedInitialVelocity = i.snapshot.v0
+	config.GlobalConfig.InclinedMuSSet = i.snapshot.muSSet
+	config.GlobalConfig.InclinedMuKSet = i.snapshot.muKSet
+	config.GlobalConfig.InclinedGravitySet = i.snapshot.gravitySet
 
 	i.started = false
-	i.completed = false
-	i.simTime = 0
-	i.simS = 0
-	i.simVelocity = i.v0
-	i.simHBlock = i.initialHeight()
-	i.simHorizS = 0
-	i.phase = "ready"
-	i.tPhaseStart = 0
-	i.baseReached = false
-	i.baseReachTime = 0
-	i.baseReachVelocity = 0
-	i.baseReachDistance = 0
-	i.simulationEnded = false
-	i.simulationEndTime = 0
-	i.simulationEndHorizS = 0
-
 	i.refreshCalculus()
+	i.simState = i.calc.ComputeStateAtTime(0)
 }
 
 func (i *InclinedPlaneScene) stepSimulation() {
-	if !i.started || i.completed || !i.calc.Slides {
+	if !i.started || i.simState.Completed || !i.calc.Slides {
 		return
 	}
 
@@ -367,198 +299,9 @@ func (i *InclinedPlaneScene) stepSimulation() {
 	}
 	dt := 1.0 / tps
 
-	i.setSimulationTime(i.simTime + dt)
-}
-
-func (i *InclinedPlaneScene) totalSimulationDuration() float64 {
-	if !i.calc.Slides {
-		return 0
-	}
-	if i.calc.StopsOnIncline {
-		return i.calc.TimeToBase
-	}
-	if i.calc.HorizontalDecel > 0 {
-		return i.calc.TimeToBase + i.calc.HorizontalStopTime
-	}
-	return i.calc.TimeToBase
-}
-
-func (i *InclinedPlaneScene) simulationProgress() float64 {
-	total := i.totalSimulationDuration()
-	if total <= 0 {
-		if i.completed {
-			return 1
-		}
-		return 0
-	}
-	p := i.simTime / total
-	if p < 0 {
-		return 0
-	}
-	if p > 1 {
-		return 1
-	}
-	return p
-}
-
-func (i *InclinedPlaneScene) baseReachProgress() float64 {
-	if !i.calc.Slides || i.calc.StopsOnIncline || i.calc.TimeToBase <= 0 {
-		return -1
-	}
-	total := i.totalSimulationDuration()
-	if total <= 0 {
-		return -1
-	}
-	p := i.calc.TimeToBase / total
-	if p < 0 {
-		return 0
-	}
-	if p > 1 {
-		return 1
-	}
-	return p
-}
-
-func (i *InclinedPlaneScene) setSimulationTime(t float64) {
-	if !i.calc.Slides {
-		i.simTime = 0
-		i.simS = 0
-		i.simHorizS = 0
-		i.simVelocity = i.calc.InitialVelocity
-		i.simHBlock = i.initialHeight()
-		i.phase = "ready"
-		i.completed = false
-		i.baseReached = false
-		i.simulationEnded = false
+	i.simState = i.calc.ComputeStateAtTime(i.simState.Time + dt)
+	if i.simState.Completed {
 		i.started = false
-		return
-	}
-
-	if t < 0 {
-		t = 0
-	}
-
-	total := i.totalSimulationDuration()
-	if total > 0 && i.calc.HorizontalDecel > 0 && t > total {
-		t = total
-	}
-
-	v0 := i.calc.InitialVelocity
-	a := i.calc.Acceleration
-
-	i.simTime = t
-	i.simS = 0
-	i.simHorizS = 0
-	i.simVelocity = v0
-	i.simHBlock = i.initialHeight()
-	i.phase = "ready"
-	i.tPhaseStart = 0
-	i.completed = false
-	i.baseReached = false
-	i.baseReachTime = 0
-	i.baseReachVelocity = 0
-	i.baseReachDistance = 0
-	i.simulationEnded = false
-	i.simulationEndTime = 0
-	i.simulationEndHorizS = 0
-
-	if t == 0 {
-		return
-	}
-
-	inclineTime := i.calc.TimeToBase
-
-	if i.calc.StopsOnIncline {
-		tIncline := t
-		if tIncline > inclineTime {
-			tIncline = inclineTime
-		}
-
-		i.phase = "incline"
-		i.simS = v0*tIncline + 0.5*a*tIncline*tIncline
-		i.simVelocity = v0 + a*tIncline
-		if i.simVelocity < 0 {
-			i.simVelocity = 0
-		}
-		if i.simS < 0 {
-			i.simS = 0
-		}
-
-		thetaRad := i.theta * math.Pi / 180.0
-		heightLost := i.simS * math.Sin(thetaRad)
-		i.simHBlock = i.initialHeight() - heightLost
-		if i.simHBlock < 0 {
-			i.simHBlock = 0
-		}
-
-		if t >= inclineTime {
-			i.simS = i.calc.StopDistanceOnIncline
-			i.simVelocity = 0
-			i.phase = "stopped"
-			i.completed = true
-			i.started = false
-			i.simulationEnded = true
-			i.simulationEndTime = inclineTime
-			i.simulationEndHorizS = 0
-			i.simTime = inclineTime
-		}
-		return
-	}
-
-	if t < inclineTime {
-		i.phase = "incline"
-		i.simS = v0*t + 0.5*a*t*t
-		i.simVelocity = v0 + a*t
-		if i.simVelocity < 0 {
-			i.simVelocity = 0
-		}
-		if i.simS < 0 {
-			i.simS = 0
-		}
-
-		thetaRad := i.theta * math.Pi / 180.0
-		heightLost := i.simS * math.Sin(thetaRad)
-		i.simHBlock = i.initialHeight() - heightLost
-		if i.simHBlock < 0 {
-			i.simHBlock = 0
-		}
-		return
-	}
-
-	i.phase = "horizontal"
-	i.simS = i.calc.DistanceToBase
-	i.simHBlock = 0
-	i.baseReached = true
-	i.baseReachTime = inclineTime
-	i.baseReachVelocity = i.calc.VelocityAtBase
-	i.baseReachDistance = i.simS
-
-	horizontalT := t - inclineTime
-	if horizontalT < 0 {
-		horizontalT = 0
-	}
-
-	if i.calc.HorizontalDecel <= 0 {
-		i.simHorizS = i.calc.VelocityAtBase * horizontalT
-		i.simVelocity = i.calc.VelocityAtBase
-		return
-	}
-
-	vBase := i.calc.VelocityAtBase
-	decel := i.calc.HorizontalDecel
-	i.simHorizS = vBase*horizontalT - 0.5*decel*horizontalT*horizontalT
-	i.simVelocity = vBase - decel*horizontalT
-
-	if i.simVelocity <= 0 || horizontalT >= i.calc.HorizontalStopTime {
-		i.simVelocity = 0
-		i.simHorizS = i.calc.HorizontalStopDist
-		i.phase = "stopped"
-		i.completed = true
-		i.started = false
-		i.simulationEnded = true
-		i.simulationEndTime = inclineTime + i.calc.HorizontalStopTime
-		i.simulationEndHorizS = i.simHorizS
-		i.simTime = i.simulationEndTime
 	}
 }
 
@@ -566,8 +309,8 @@ func (i *InclinedPlaneScene) toggleRunState() {
 	if !i.calc.Slides {
 		return
 	}
-	if i.completed {
-		i.setSimulationTime(0)
+	if i.simState.Completed {
+		i.simState = i.calc.ComputeStateAtTime(0)
 	}
 	i.started = !i.started
 }
@@ -620,7 +363,7 @@ func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 	vector.DrawFilledRect(screen, float32(btnX), float32(btnY), float32(btnW), float32(btnH), color.RGBA{40, 40, 40, 255}, false)
 
 	icon := i.playImage
-	if i.started && !i.completed {
+	if i.started && !i.simState.Completed {
 		icon = i.pauseImage
 	}
 
@@ -637,7 +380,7 @@ func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 		}
 	} else {
 		label := "PLAY"
-		if i.started && !i.completed {
+		if i.started && !i.simState.Completed {
 			label = "PAUSE"
 		}
 		x := btnX + btnW*0.12
@@ -646,10 +389,10 @@ func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 	}
 
 	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW), float32(barH), color.RGBA{55, 55, 55, 255}, false)
-	progress := i.simulationProgress()
+	progress := i.calc.SimProgress(i.simState.Time)
 	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW*progress), float32(barH), color.RGBA{30, 170, 90, 255}, false)
 
-	baseProgress := i.baseReachProgress()
+	baseProgress := i.calc.BaseReachProgressFraction()
 	if baseProgress >= 0 {
 		baseX := barX + barW*baseProgress
 		vector.DrawFilledRect(screen, float32(baseX-2), float32(barY-3), 4, float32(barH+6), color.RGBA{240, 95, 40, 255}, false)
@@ -678,7 +421,7 @@ func (i *InclinedPlaneScene) handleMouseControl() {
 
 	barX, barY, barW, barH := i.progressBarRect()
 	if px >= barX && px <= barX+barW && py >= barY && py <= barY+barH {
-		total := i.totalSimulationDuration()
+		total := i.calc.TotalDuration()
 		if total <= 0 {
 			return
 		}
@@ -690,62 +433,17 @@ func (i *InclinedPlaneScene) handleMouseControl() {
 		if progress > 1 {
 			progress = 1
 		}
-		i.setSimulationTime(total * progress)
-		i.started = wasRunning && !i.completed
+		i.simState = i.calc.ComputeStateAtTime(total * progress)
+		i.started = wasRunning && !i.simState.Completed
 	}
-}
-
-func (i *InclinedPlaneScene) estimatedTimeToGround() float64 {
-	if !i.calc.Slides || i.initialHeight() <= 0 {
-		return -1
-	}
-	if i.calc.StopsOnIncline {
-		return -1
-	}
-	return i.calc.TimeToBase
-}
-
-func (i *InclinedPlaneScene) initialHeight() float64 {
-	if i.snapshot.hBlock > 0 {
-		return i.snapshot.hBlock
-	}
-	thetaRad := i.theta * math.Pi / 180.0
-	return i.length * math.Sin(thetaRad)
-}
-
-func (i *InclinedPlaneScene) distanceFromBase() float64 {
-	if i.phase == "incline" || i.phase == "ready" {
-		d := i.calc.DistanceToBase - i.simS
-		if d < 0 {
-			return 0
-		}
-		return d
-	}
-	return 0
-}
-
-func (i *InclinedPlaneScene) currentAcceleration() float64 {
-	if !i.calc.Slides {
-		return 0
-	}
-	if i.phase == "horizontal" {
-		if i.calc.HorizontalDecel <= 0 {
-			return 0
-		}
-		return -i.calc.HorizontalDecel
-	}
-	if i.phase == "stopped" {
-		return 0
-	}
-	return i.calc.Acceleration
 }
 
 func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBottom float64) {
-	if i.theta <= 0 || i.length <= 0 {
+	if i.calc.Theta <= 0 || i.calc.DistanceToBase <= 0 {
 		return
 	}
 
-	thetaRad := i.theta * math.Pi / 180.0
+	thetaRad := i.calc.Theta * math.Pi / 180.0
 	cosTheta := math.Cos(thetaRad)
 
 	sw := float64(config.GlobalConfig.ScreenWidth)
@@ -766,7 +464,7 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	// Triangolo: vertice in alto a sinistra (triX0, triTopY) → apex
 	//            angolo retto in basso a sinistra (triX0, triBaseY)
 	//            angolo θ in basso a destra (triX1, triBaseY)
-	inclineHorizontalMeters := i.length * cosTheta
+	inclineHorizontalMeters := i.calc.DistanceToBase * cosTheta
 	if inclineHorizontalMeters < 0.001 {
 		inclineHorizontalMeters = 0.001
 	}
@@ -854,7 +552,7 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	// Etichetta θ
 	labelX := triX0 + triBaseW*0.06
 	labelY := triBaseY - float64(arcRadius)*1.15
-	angleText := fmt.Sprintf("θ=%.1f°", i.theta)
+	angleText := fmt.Sprintf("θ=%.1f°", i.calc.Theta)
 	utils.ScreenDraw(-(textDim * 0.4), labelX+1.5, labelY+1.5, "black", screen, angleText, "libertinus")
 	utils.ScreenDraw(-(textDim * 0.4), labelX, labelY, "cyan", screen, angleText, "libertinus")
 
@@ -876,18 +574,15 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	bW := bImgW * bScale
 	bH := bImgH * bScale
 
-	slopeLen := i.length
+	slopeLen := i.calc.DistanceToBase
 	distToBase := i.calc.DistanceToBase
 	if distToBase > slopeLen {
 		distToBase = slopeLen
 	}
 
-	if i.phase == "horizontal" || i.phase == "stopped" {
+	if i.simState.Phase == "horizontal" || i.simState.Phase == "stopped" {
 		// Blocco sul piano orizzontale dopo la base del piano inclinato
-		gx := triX1 + i.simHorizS*pxPerMeter
-		if gx > actionRight {
-			gx = actionRight
-		}
+		gx := triX1 + i.simState.HorizS*pxPerMeter
 		contactInset := 1.5
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(bScale, bScale)
@@ -899,7 +594,7 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 
 	// Blocco sul piano inclinato (fasi "ready" e "incline")
 	// Riferimento: vertice in basso a destra (base del piano)
-	distFromBase := distToBase - i.simS
+	distFromBase := distToBase - i.simState.S
 	if distFromBase < 0 {
 		distFromBase = 0
 	}

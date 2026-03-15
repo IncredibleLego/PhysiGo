@@ -51,9 +51,9 @@ func (i *InclinedInputScene) Draw(screen *ebiten.Image) {
 
 	lines := []string{
 		"θ (0°-89°): " + i.renderInputValue(i.thetaInput, 0),
-		"μ_s (0-1) (optional): " + i.renderInputValue(i.muSInput, 1),
-		"μ_k (0-1) (optional): " + i.renderInputValue(i.muKInput, 2),
-		"m (mass > 0, optional): " + i.renderInputValue(i.massInput, 3),
+		"μ_s (>=0, optional): " + i.renderInputValue(i.muSInput, 1),
+		"μ_k (>=0, optional): " + i.renderInputValue(i.muKInput, 2),
+		"m (mass > 0): " + i.renderInputValue(i.massInput, 3),
 		"g (gravity): " + i.renderInputValue(i.gravityInput, 4),
 		"L (length > 0, optional): " + i.renderInputValue(i.lengthInput, 5),
 		"h_block (height, optional): " + i.renderInputValue(i.hBlockInput, 6),
@@ -228,15 +228,15 @@ func (i *InclinedInputScene) tryConfirmActiveField() bool {
 			return false
 		}
 	case 1:
-		_, ok, _ := parseOptionalRange(i.muSInput, 0, 1)
+		_, ok, _ := parseOptionalNonNegative(i.muSInput)
 		if !ok {
-			i.validationMessage = "μ_s must be between 0 and 1"
+			i.validationMessage = "μ_s must be >= 0"
 			return false
 		}
 	case 2:
-		_, ok, _ := parseOptionalRange(i.muKInput, 0, 1)
+		_, ok, _ := parseOptionalNonNegative(i.muKInput)
 		if !ok {
-			i.validationMessage = "μ_k must be between 0 and 1"
+			i.validationMessage = "μ_k must be >= 0"
 			return false
 		}
 	case 3:
@@ -279,10 +279,10 @@ func (i *InclinedInputScene) allInputsValid() bool {
 	if _, ok, _ := parseOptionalMin(i.massInput, 0); !ok {
 		return false
 	}
-	if _, ok, _ := parseOptionalRange(i.muSInput, 0, 1); !ok {
+	if _, ok, _ := parseOptionalNonNegative(i.muSInput); !ok {
 		return false
 	}
-	if _, ok, _ := parseOptionalRange(i.muKInput, 0, 1); !ok {
+	if _, ok, _ := parseOptionalNonNegative(i.muKInput); !ok {
 		return false
 	}
 	if _, ok, _ := parseOptionalMin(i.gravityInput, 0); !ok {
@@ -318,8 +318,8 @@ func (i *InclinedInputScene) storeValues() {
 	theta, _ := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle)
 	mass, _, massSet := parseOptionalMin(i.massInput, 0)
 	length, _, lengthSet := parseOptionalMin(i.lengthInput, 0)
-	muS, _, muSSet := parseOptionalRange(i.muSInput, 0, 1)
-	muK, _, muKSet := parseOptionalRange(i.muKInput, 0, 1)
+	muS, _, muSSet := parseOptionalNonNegative(i.muSInput)
+	muK, _, muKSet := parseOptionalNonNegative(i.muKInput)
 	gravity, _, gravitySet := parseOptionalMin(i.gravityInput, 0)
 	v0, _, _ := parseOptionalNonNegative(i.v0Input)
 	if !gravitySet {
@@ -382,20 +382,6 @@ func parseRequiredMin(input string, min float64) (float64, bool) {
 		return 0, false
 	}
 	return value, true
-}
-
-func parseOptionalRange(input string, min, max float64) (float64, bool, bool) {
-	if strings.TrimSpace(input) == "" {
-		return 0, true, false
-	}
-	value, err := parseFloatInput(input)
-	if err != nil {
-		return 0, false, true
-	}
-	if value < min || value > max {
-		return 0, false, true
-	}
-	return value, true, true
 }
 
 func parseOptionalMin(input string, min float64) (float64, bool, bool) {

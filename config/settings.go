@@ -12,6 +12,11 @@ type Config struct {
 	Fullscreen              bool
 	Player1Name             string
 	Player2Name             string
+	InclinedObjectMode      string
+	InclinedRotaryType      string
+	InclinedRadius          float64
+	InclinedMuR             float64
+	InclinedMuRSet          bool
 	InclinedTheta           float64
 	InclinedMuS             float64
 	InclinedMuK             float64
@@ -52,6 +57,11 @@ var GlobalConfig = &Config{
 	Fullscreen:              true,
 	Player1Name:             "Player 1",
 	Player2Name:             "Player 2",
+	InclinedObjectMode:      "block",
+	InclinedRotaryType:      "",
+	InclinedRadius:          0,
+	InclinedMuR:             0,
+	InclinedMuRSet:          false,
 	InclinedTheta:           0,
 	InclinedMuS:             0,
 	InclinedMuK:             0,
@@ -92,6 +102,11 @@ var DefaultConfig = &Config{
 	Fullscreen:              true,
 	Player1Name:             "Player 1",
 	Player2Name:             "Player 2",
+	InclinedObjectMode:      "block",
+	InclinedRotaryType:      "",
+	InclinedRadius:          0,
+	InclinedMuR:             0,
+	InclinedMuRSet:          false,
 	InclinedTheta:           0,
 	InclinedMuS:             0,
 	InclinedMuK:             0,

@@ -7,9 +7,13 @@ import (
 
 // InclinedPlaneCalculus holds all pre-computed physics values for the inclined plane.
 type InclinedPlaneCalculus struct {
-	// Input geometry
+	// Input geometry and body model
 	Theta         float64
 	InitialHeight float64
+	ObjectMode    InclinedObjectMode
+	RotaryType    InclinedRotaryType
+	Radius        float64
+	MuR           float64
 
 	// Forces
 	WeightParallel     float64
@@ -21,6 +25,10 @@ type InclinedPlaneCalculus struct {
 	NetForce           float64
 	Acceleration       float64
 	Slides             bool
+
+	// Rotational model (I = k*m*r^2)
+	RotaryInertiaFactor float64
+	MomentOfInertia     float64
 
 	// Kinematics on incline
 	DistanceToBase        float64
@@ -34,6 +42,13 @@ type InclinedPlaneCalculus struct {
 	HorizontalDecel    float64
 	HorizontalStopDist float64
 	HorizontalStopTime float64
+
+	// Energy reference
+	Mass                   float64
+	Gravity                float64
+	InitialKineticTrans    float64
+	InitialKineticRot      float64
+	InitialMechanicalTotal float64
 }
 
 // InclinedPlaneSimState is the full kinematic state of the simulation at a given instant.
@@ -44,6 +59,18 @@ type InclinedPlaneSimState struct {
 	Velocity float64
 	HBlock   float64 // current block height
 	Phase    string  // "ready", "incline", "horizontal", "stopped"
+
+	// Rotational dynamics
+	AngularVelocity     float64
+	AngularAcceleration float64
+	RotationAngle       float64
+
+	// Energies and work
+	KineticTranslational float64
+	KineticRotational    float64
+	PotentialEnergy      float64
+	TotalMechanical      float64
+	TotalWork            float64
 
 	BaseReached       bool
 	BaseReachTime     float64
@@ -126,6 +153,17 @@ func (c InclinedPlaneCalculus) CurrentAcceleration(phase string) float64 {
 	}
 }
 
+func (c InclinedPlaneCalculus) CurrentAngularAcceleration(phase string) float64 {
+	if c.ObjectMode != InclinedObjectRotary || c.Radius <= 0 {
+		return 0
+	}
+	a := c.CurrentAcceleration(phase)
+	if c.Radius == 0 {
+		return 0
+	}
+	return a / c.Radius
+}
+
 // DistanceFromBase returns the remaining distance to the incline base for the given simulation state.
 func (c InclinedPlaneCalculus) DistanceFromBase(s float64, phase string) float64 {
 	if phase == "incline" || phase == "ready" {
@@ -142,14 +180,15 @@ func (c InclinedPlaneCalculus) DistanceFromBase(s float64, phase string) float64
 func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimState {
 	h0 := c.InitialHeight
 
-	// Block does not slide: always at rest.
+	// Body does not slide: always at rest.
 	if !c.Slides {
-		return InclinedPlaneSimState{
+		state := InclinedPlaneSimState{
 			Time:     0,
 			Velocity: c.InitialVelocity,
 			HBlock:   h0,
 			Phase:    "ready",
 		}
+		return c.withEnergyAndRotation(state)
 	}
 
 	if t < 0 {
@@ -174,12 +213,12 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 	}
 
 	if t == 0 {
-		return state
+		return c.withEnergyAndRotation(state)
 	}
 
 	inclineTime := c.TimeToBase
 
-	// — Block stops on the incline —
+	// Body stops on the incline.
 	if c.StopsOnIncline {
 		tInc := t
 		if tInc > inclineTime {
@@ -208,10 +247,10 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 			state.SimulationEndTime = inclineTime
 			state.Time = inclineTime
 		}
-		return state
+		return c.withEnergyAndRotation(state)
 	}
 
-	// — Still on the incline —
+	// Still on the incline.
 	if t < inclineTime {
 		state.Phase = "incline"
 		state.S = v0*t + 0.5*a*t*t
@@ -227,10 +266,10 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 		if state.HBlock < 0 {
 			state.HBlock = 0
 		}
-		return state
+		return c.withEnergyAndRotation(state)
 	}
 
-	// — On the horizontal ground —
+	// On the horizontal ground.
 	state.Phase = "horizontal"
 	state.S = c.DistanceToBase
 	state.HBlock = 0
@@ -247,7 +286,7 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 	if c.HorizontalDecel <= 0 {
 		state.HorizS = c.VelocityAtBase * horizontalT
 		state.Velocity = c.VelocityAtBase
-		return state
+		return c.withEnergyAndRotation(state)
 	}
 
 	vBase := c.VelocityAtBase
@@ -265,6 +304,25 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 		state.SimulationEndHorizS = state.HorizS
 		state.Time = state.SimulationEndTime
 	}
+	return c.withEnergyAndRotation(state)
+}
+
+func (c InclinedPlaneCalculus) withEnergyAndRotation(state InclinedPlaneSimState) InclinedPlaneSimState {
+	if c.ObjectMode == InclinedObjectRotary && c.Radius > 0 {
+		state.AngularVelocity = state.Velocity / c.Radius
+		state.AngularAcceleration = c.CurrentAngularAcceleration(state.Phase)
+		state.RotationAngle = (state.S + state.HorizS) / c.Radius
+	} else {
+		state.AngularVelocity = 0
+		state.AngularAcceleration = 0
+		state.RotationAngle = 0
+	}
+
+	state.KineticTranslational = 0.5 * c.Mass * state.Velocity * state.Velocity
+	state.KineticRotational = 0.5 * c.MomentOfInertia * state.AngularVelocity * state.AngularVelocity
+	state.PotentialEnergy = c.Mass * c.Gravity * state.HBlock
+	state.TotalMechanical = state.KineticTranslational + state.KineticRotational + state.PotentialEnergy
+	state.TotalWork = (state.KineticTranslational + state.KineticRotational) - (c.InitialKineticTrans + c.InitialKineticRot)
 	return state
 }
 
@@ -274,6 +332,16 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 	cosTheta := math.Cos(thetaRad)
 	mg := cfg.InclinedMass * cfg.InclinedGravity
 
+	objectMode := InclinedObjectMode(cfg.InclinedObjectMode)
+	if objectMode != InclinedObjectRotary {
+		objectMode = InclinedObjectBlock
+	}
+	rotaryType := InclinedRotaryType(cfg.InclinedRotaryType)
+	radius := cfg.InclinedRadius
+	if radius < 0 {
+		radius = 0
+	}
+
 	weightParallel := mg * sinTheta
 	weightPerp := mg * cosTheta
 	normal := weightPerp
@@ -282,31 +350,70 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 	if cfg.InclinedMuSSet {
 		staticFrictionMax = cfg.InclinedMuS * normal
 	}
-	staticFrictionReal := math.Min(weightParallel, staticFrictionMax)
 
-	// The block starts moving only when the tangential component exceeds max static friction.
-	slides := true
-	if cfg.InclinedInitialVelocity > 0 {
-		slides = true
-	} else if cfg.InclinedMuSSet {
-		slides = weightParallel > staticFrictionMax
-	}
-
-	// Dynamic friction on incline is active when mu_k is set and either static friction is active
-	// or an initial velocity is provided (forced motion case).
 	dynamicFriction := 0.0
-	if cfg.InclinedMuKSet && (cfg.InclinedMuSSet || cfg.InclinedInitialVelocity > 0) {
-		dynamicFriction = cfg.InclinedMuK * normal
-	}
-
 	netForce := 0.0
 	accel := 0.0
-	if slides {
-		netForce = weightParallel - dynamicFriction
-		if cfg.InclinedMass > 0 {
-			accel = netForce / cfg.InclinedMass
-			if accel < 0 {
-				accel = 0
+	slides := true
+	staticFrictionReal := math.Min(weightParallel, staticFrictionMax)
+
+	inertiaFactor := 0.0
+	momentOfInertia := 0.0
+	isRotary := objectMode == InclinedObjectRotary && radius > 0 && cfg.InclinedMass > 0
+
+	muR := 0.0
+	if cfg.InclinedMuRSet {
+		muR = cfg.InclinedMuR
+		if muR < 0 {
+			muR = 0
+		}
+	}
+
+	if isRotary {
+		inertiaFactor = rotaryInertiaFactor(rotaryType)
+		momentOfInertia = inertiaFactor * cfg.InclinedMass * radius * radius
+
+		// On the incline use the pure rolling model (no dissipative rolling-friction loss).
+		// F_v = mu_r*N is applied on the horizontal phase to brake the body.
+		dynamicFriction = 0
+		availableForce := weightParallel
+
+		if cfg.InclinedInitialVelocity > 0 {
+			slides = true
+		} else {
+			slides = availableForce > 0
+		}
+
+		if slides {
+			den := cfg.InclinedMass * (1.0 + inertiaFactor)
+			if den > 0 {
+				accel = availableForce / den
+				if accel < 0 {
+					accel = 0
+				}
+			}
+			netForce = cfg.InclinedMass * accel
+		}
+		staticFrictionMax = 0
+		staticFrictionReal = 0
+	} else {
+		if cfg.InclinedInitialVelocity > 0 {
+			slides = true
+		} else if cfg.InclinedMuSSet {
+			slides = weightParallel > staticFrictionMax
+		}
+
+		if cfg.InclinedMuKSet && (cfg.InclinedMuSSet || cfg.InclinedInitialVelocity > 0) {
+			dynamicFriction = cfg.InclinedMuK * normal
+		}
+
+		if slides {
+			netForce = weightParallel - dynamicFriction
+			if cfg.InclinedMass > 0 {
+				accel = netForce / cfg.InclinedMass
+				if accel < 0 {
+					accel = 0
+				}
 			}
 		}
 	}
@@ -343,7 +450,6 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		} else if accel > 0 {
 			timeToBase = (velocityAtBase - v0) / accel
 		} else {
-			// Decelerating on incline: may stop before reaching the base.
 			stopDistanceOnIncline = (v0 * v0) / (2 * -accel)
 			if stopDistanceOnIncline < distanceToBase {
 				stopsOnIncline = true
@@ -361,7 +467,13 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 	horizontalDecel := 0.0
 	horizontalStopDist := 0.0
 	horizontalStopTime := 0.0
-	if cfg.InclinedMuKSet {
+	if isRotary {
+		horizontalDecel = muR * cfg.InclinedGravity
+		if horizontalDecel > 0 && velocityAtBase > 0 && !stopsOnIncline {
+			horizontalStopDist = (velocityAtBase * velocityAtBase) / (2 * horizontalDecel)
+			horizontalStopTime = velocityAtBase / horizontalDecel
+		}
+	} else if cfg.InclinedMuKSet {
 		horizontalDecel = cfg.InclinedMuK * cfg.InclinedGravity
 		if horizontalDecel > 0 && velocityAtBase > 0 && !stopsOnIncline {
 			horizontalStopDist = (velocityAtBase * velocityAtBase) / (2 * horizontalDecel)
@@ -369,27 +481,46 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		}
 	}
 
+	initialOmega := 0.0
+	if isRotary && radius > 0 {
+		initialOmega = v0 / radius
+	}
+	initialKTrans := 0.5 * cfg.InclinedMass * v0 * v0
+	initialKRot := 0.5 * momentOfInertia * initialOmega * initialOmega
+	initialMechanical := initialKTrans + initialKRot + cfg.InclinedMass*cfg.InclinedGravity*initialHeight
+
 	return InclinedPlaneCalculus{
-		Theta:                 cfg.InclinedTheta,
-		InitialHeight:         initialHeight,
-		WeightParallel:        weightParallel,
-		WeightPerp:            weightPerp,
-		Normal:                normal,
-		StaticFrictionMax:     staticFrictionMax,
-		StaticFrictionReal:    staticFrictionReal,
-		DynamicFriction:       dynamicFriction,
-		NetForce:              netForce,
-		Acceleration:          accel,
-		Slides:                slides,
-		DistanceToBase:        distanceToBase,
-		VelocityAtBase:        velocityAtBase,
-		TimeToBase:            timeToBase,
-		HorizontalDecel:       horizontalDecel,
-		HorizontalStopDist:    horizontalStopDist,
-		HorizontalStopTime:    horizontalStopTime,
-		InitialVelocity:       v0,
-		StopsOnIncline:        stopsOnIncline,
-		StopDistanceOnIncline: stopDistanceOnIncline,
+		Theta:                  cfg.InclinedTheta,
+		InitialHeight:          initialHeight,
+		ObjectMode:             objectMode,
+		RotaryType:             rotaryType,
+		Radius:                 radius,
+		MuR:                    muR,
+		WeightParallel:         weightParallel,
+		WeightPerp:             weightPerp,
+		Normal:                 normal,
+		StaticFrictionMax:      staticFrictionMax,
+		StaticFrictionReal:     staticFrictionReal,
+		DynamicFriction:        dynamicFriction,
+		NetForce:               netForce,
+		Acceleration:           accel,
+		Slides:                 slides,
+		RotaryInertiaFactor:    inertiaFactor,
+		MomentOfInertia:        momentOfInertia,
+		DistanceToBase:         distanceToBase,
+		VelocityAtBase:         velocityAtBase,
+		TimeToBase:             timeToBase,
+		HorizontalDecel:        horizontalDecel,
+		HorizontalStopDist:     horizontalStopDist,
+		HorizontalStopTime:     horizontalStopTime,
+		InitialVelocity:        v0,
+		StopsOnIncline:         stopsOnIncline,
+		StopDistanceOnIncline:  stopDistanceOnIncline,
+		Mass:                   cfg.InclinedMass,
+		Gravity:                cfg.InclinedGravity,
+		InitialKineticTrans:    initialKTrans,
+		InitialKineticRot:      initialKRot,
+		InitialMechanicalTotal: initialMechanical,
 	}
 }
 

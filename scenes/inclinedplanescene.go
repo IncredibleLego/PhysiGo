@@ -17,9 +17,14 @@ import (
 )
 
 type inclinedPlaneSnapshot struct {
+	objectMode string
+	rotaryType string
+	radius     float64
+
 	theta      float64
 	muS        float64
 	muK        float64
+	muR        float64
 	mass       float64
 	gravity    float64
 	length     float64
@@ -27,6 +32,7 @@ type inclinedPlaneSnapshot struct {
 	v0         float64
 	muSSet     bool
 	muKSet     bool
+	muRSet     bool
 	gravitySet bool
 }
 
@@ -36,11 +42,12 @@ type InclinedPlaneScene struct {
 	simState InclinedPlaneSimState
 	started  bool
 
-	playImage  *ebiten.Image
-	pauseImage *ebiten.Image
-	planeImage *ebiten.Image
-	blockImage *ebiten.Image
-	whiteImage *ebiten.Image
+	playImage   *ebiten.Image
+	pauseImage  *ebiten.Image
+	planeImage  *ebiten.Image
+	blockImage  *ebiten.Image
+	barrelImage *ebiten.Image
+	whiteImage  *ebiten.Image
 }
 
 func (i *InclinedPlaneScene) ShouldPreserveState(reason SceneChangeReason) bool {
@@ -83,24 +90,55 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 		fmt.Sprintf("h block: %.2f m", i.simState.HBlock),
 		fmt.Sprintf("dist from base: %.2f m", i.calc.DistanceFromBase(i.simState.S, i.simState.Phase)),
 		fmt.Sprintf("dist from origin: %.2f m", i.simState.S+i.simState.HorizS),
+		fmt.Sprintf("K trans: %.2f J", i.simState.KineticTranslational),
+		fmt.Sprintf("K rot: %.2f J", i.simState.KineticRotational),
+		fmt.Sprintf("U grav: %.2f J", i.simState.PotentialEnergy),
+		fmt.Sprintf("W total: %.2f J", i.simState.TotalWork),
+		fmt.Sprintf("E mech: %.2f J", i.simState.TotalMechanical),
+		fmt.Sprintf("omega: %.2f rad/s", i.simState.AngularVelocity),
+		fmt.Sprintf("alpha: %.2f rad/s^2", i.simState.AngularAcceleration),
+		fmt.Sprintf("phi: %.2f rad", i.simState.RotationAngle),
+	}
+
+	bodyLabel := "blocco"
+	rotaryShapeLabel := "-"
+	rotaryFormula := "-"
+	frictionCoeffLineA := fmt.Sprintf("μ_s: %.2f", i.snapshot.muS)
+	frictionCoeffLineB := fmt.Sprintf("μ_k: %.2f", i.snapshot.muK)
+	frictionForceLabel := fmt.Sprintf("Fk: %.1f N", i.calc.DynamicFriction)
+	if i.calc.ObjectMode == InclinedObjectRotary {
+		bodyLabel = "rotatorio"
+		rotaryShapeLabel = rotaryTypeLabel(i.calc.RotaryType)
+		rotaryFormula = rotaryInertiaFormula(i.calc.RotaryType)
+		frictionCoeffLineA = fmt.Sprintf("μ_r: %.2f", i.snapshot.muR)
+		frictionCoeffLineB = ""
+		frictionForceLabel = fmt.Sprintf("Fv: %.1f N", i.calc.DynamicFriction)
 	}
 
 	rightLines := []string{
 		"PLANE DATA",
+		fmt.Sprintf("body: %s", bodyLabel),
+		fmt.Sprintf("shape: %s", rotaryShapeLabel),
+		fmt.Sprintf("I formula: %s", rotaryFormula),
+		fmt.Sprintf("radius: %.2f m", i.calc.Radius),
+		fmt.Sprintf("inertia I: %.3f kg*m^2", i.calc.MomentOfInertia),
 		fmt.Sprintf("mass: %.1f kg", i.snapshot.mass),
 		fmt.Sprintf("gravity: %.1f m/s^2", i.snapshot.gravity),
 		fmt.Sprintf("θ: %.1f°", i.snapshot.theta),
 		fmt.Sprintf("length L: %.1f m", i.snapshot.length),
 		fmt.Sprintf("h0 block: %.1f m", i.calc.InitialHeight),
 		fmt.Sprintf("v0: %.1f m/s", i.snapshot.v0),
-		fmt.Sprintf("μ_s: %.2f", i.snapshot.muS),
-		fmt.Sprintf("μ_k: %.2f", i.snapshot.muK),
 		fmt.Sprintf("P||: %.1f N", i.calc.WeightParallel),
 		fmt.Sprintf("N: %.1f N", i.calc.Normal),
 		fmt.Sprintf("Fs,max: %.1f N", i.calc.StaticFrictionMax),
-		fmt.Sprintf("Fk: %.1f N", i.calc.DynamicFriction),
+		frictionForceLabel,
 		fmt.Sprintf("F net: %.1f N", i.calc.NetForce),
 		fmt.Sprintf("slides: %t", i.calc.Slides),
+	}
+
+	rightLines = append(rightLines[:12], append([]string{frictionCoeffLineA}, rightLines[12:]...)...)
+	if frictionCoeffLineB != "" {
+		rightLines = append(rightLines[:13], append([]string{frictionCoeffLineB}, rightLines[13:]...)...)
 	}
 
 	liveDataBottom := y + float64(len(leftLines))*step + textDim*0.25
@@ -141,21 +179,48 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 		text string
 		col  string
 	}, 0, 3)
+
+	baseState := InclinedPlaneSimState{}
+	hasBaseState := i.calc.Slides && !i.calc.StopsOnIncline && i.calc.TimeToBase >= 0
+	if hasBaseState {
+		baseState = i.calc.ComputeStateAtTime(i.calc.TimeToBase)
+	}
+
 	if i.simState.BaseReached {
 		resultLines = append(resultLines, struct {
 			text string
 			col  string
 		}{
-			text: fmt.Sprintf("BASE t=%.2fs  v=%.2fm/s", i.simState.BaseReachTime, i.simState.BaseReachVelocity),
+			text: fmt.Sprintf("BASE t=%.3fs  v=%.3fm/s", i.simState.BaseReachTime, i.simState.BaseReachVelocity),
 			col:  "green",
 		})
+
+		if hasBaseState {
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: fmt.Sprintf("AT BASE  Kt=%.3fJ  Kr=%.3fJ  W=%.3fJ", baseState.KineticTranslational, baseState.KineticRotational, baseState.TotalWork),
+				col:  "cyan",
+			})
+
+			if i.calc.HorizontalDecel > 0 {
+				resultLines = append(resultLines, struct {
+					text string
+					col  string
+				}{
+					text: fmt.Sprintf("PHASE 2  a=%.3fm/s^2  t=%.3fs  x=%.3fm", -i.calc.HorizontalDecel, i.calc.HorizontalStopTime, i.calc.HorizontalStopDist),
+					col:  "orange",
+				})
+			}
+		}
 	}
 	if i.simState.SimulationEnded {
 		resultLines = append(resultLines, struct {
 			text string
 			col  string
 		}{
-			text: fmt.Sprintf("STOP t=%.2fs  x=%.2fm", i.simState.SimulationEndTime, i.simState.SimulationEndHorizS),
+			text: fmt.Sprintf("STOP total t=%.3fs  x=%.3fm", i.simState.SimulationEndTime, i.simState.SimulationEndHorizS),
 			col:  "green",
 		})
 	}
@@ -190,9 +255,13 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 
 func (i *InclinedPlaneScene) FirstLoad() {
 	i.snapshot = inclinedPlaneSnapshot{
+		objectMode: config.GlobalConfig.InclinedObjectMode,
+		rotaryType: config.GlobalConfig.InclinedRotaryType,
+		radius:     config.GlobalConfig.InclinedRadius,
 		theta:      config.GlobalConfig.InclinedTheta,
 		muS:        config.GlobalConfig.InclinedMuS,
 		muK:        config.GlobalConfig.InclinedMuK,
+		muR:        config.GlobalConfig.InclinedMuR,
 		mass:       config.GlobalConfig.InclinedMass,
 		gravity:    config.GlobalConfig.InclinedGravity,
 		length:     config.GlobalConfig.InclinedLength,
@@ -200,6 +269,7 @@ func (i *InclinedPlaneScene) FirstLoad() {
 		v0:         config.GlobalConfig.InclinedInitialVelocity,
 		muSSet:     config.GlobalConfig.InclinedMuSSet,
 		muKSet:     config.GlobalConfig.InclinedMuKSet,
+		muRSet:     config.GlobalConfig.InclinedMuRSet,
 		gravitySet: config.GlobalConfig.InclinedGravitySet,
 	}
 
@@ -271,9 +341,13 @@ func (i *InclinedPlaneScene) refreshCalculus() {
 }
 
 func (i *InclinedPlaneScene) resetSimulationFromSnapshot() {
+	config.GlobalConfig.InclinedObjectMode = i.snapshot.objectMode
+	config.GlobalConfig.InclinedRotaryType = i.snapshot.rotaryType
+	config.GlobalConfig.InclinedRadius = i.snapshot.radius
 	config.GlobalConfig.InclinedTheta = i.snapshot.theta
 	config.GlobalConfig.InclinedMuS = i.snapshot.muS
 	config.GlobalConfig.InclinedMuK = i.snapshot.muK
+	config.GlobalConfig.InclinedMuR = i.snapshot.muR
 	config.GlobalConfig.InclinedMass = i.snapshot.mass
 	config.GlobalConfig.InclinedGravity = i.snapshot.gravity
 	config.GlobalConfig.InclinedLength = i.snapshot.length
@@ -281,6 +355,7 @@ func (i *InclinedPlaneScene) resetSimulationFromSnapshot() {
 	config.GlobalConfig.InclinedInitialVelocity = i.snapshot.v0
 	config.GlobalConfig.InclinedMuSSet = i.snapshot.muSSet
 	config.GlobalConfig.InclinedMuKSet = i.snapshot.muKSet
+	config.GlobalConfig.InclinedMuRSet = i.snapshot.muRSet
 	config.GlobalConfig.InclinedGravitySet = i.snapshot.gravitySet
 
 	i.started = false
@@ -333,6 +408,7 @@ func (i *InclinedPlaneScene) loadControlImages() {
 	i.pauseImage = load("img/pause.png")
 	i.planeImage = load("img/plane.jpg")
 	i.blockImage = load("img/block.png")
+	i.barrelImage = load("img/barrel.png")
 	i.whiteImage = ebiten.NewImage(1, 1)
 	i.whiteImage.Fill(color.White)
 }
@@ -556,12 +632,19 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	utils.ScreenDraw(-(textDim * 0.4), labelX+1.5, labelY+1.5, "black", screen, angleText, "libertinus")
 	utils.ScreenDraw(-(textDim * 0.4), labelX, labelY, "cyan", screen, angleText, "libertinus")
 
-	// Blocco
-	if i.blockImage == nil {
+	// Body sprite (block or rotating barrel)
+	bodyImage := i.blockImage
+	rotateByPhysics := false
+	if i.calc.ObjectMode == InclinedObjectRotary && i.barrelImage != nil {
+		bodyImage = i.barrelImage
+		rotateByPhysics = true
+	}
+
+	if bodyImage == nil {
 		return
 	}
-	bImgW := float64(i.blockImage.Bounds().Dx())
-	bImgH := float64(i.blockImage.Bounds().Dy())
+	bImgW := float64(bodyImage.Bounds().Dx())
+	bImgH := float64(bodyImage.Bounds().Dy())
 	slopePixels := math.Sqrt(triBaseW*triBaseW + triH*triH)
 	targetSide := math.Min(slopePixels*0.10, sh*0.095)
 	if targetSide < slopePixels*0.07 {
@@ -581,14 +664,27 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	}
 
 	if i.simState.Phase == "horizontal" || i.simState.Phase == "stopped" {
-		// Blocco sul piano orizzontale dopo la base del piano inclinato
+		// Body sul piano orizzontale dopo la base del piano inclinato
 		gx := triX1 + i.simState.HorizS*pxPerMeter
 		contactInset := 1.5
+
+		if rotateByPhysics {
+			cx := gx - bW/2
+			cy := triBaseY + contactInset - bH/2
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(bScale, bScale)
+			op.GeoM.Translate(-bW/2, -bH/2)
+			op.GeoM.Rotate(-i.simState.RotationAngle)
+			op.GeoM.Translate(cx, cy)
+			screen.DrawImage(bodyImage, op)
+			return
+		}
+
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(bScale, bScale)
 		op.GeoM.Translate(-bW, -bH)
 		op.GeoM.Translate(gx, triBaseY+contactInset)
-		screen.DrawImage(i.blockImage, op)
+		screen.DrawImage(bodyImage, op)
 		return
 	}
 
@@ -607,12 +703,25 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	contactInset := 1.5
 	sx := sxTouch - math.Sin(thetaRad)*contactInset
 	sy := syTouch + math.Cos(thetaRad)*contactInset
+
+	if rotateByPhysics {
+		cx := sx - bW/2
+		cy := sy - bH/2
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(bScale, bScale)
+		op.GeoM.Translate(-bW/2, -bH/2)
+		op.GeoM.Rotate(-i.simState.RotationAngle)
+		op.GeoM.Translate(cx, cy)
+		screen.DrawImage(bodyImage, op)
+		return
+	}
+
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(bScale, bScale)
 	op.GeoM.Translate(-bW, -bH)
 	op.GeoM.Rotate(thetaRad)
 	op.GeoM.Translate(sx, sy)
-	screen.DrawImage(i.blockImage, op)
+	screen.DrawImage(bodyImage, op)
 }
 
 var _ Scene = (*InclinedPlaneScene)(nil)

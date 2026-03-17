@@ -81,15 +81,11 @@ func (i *InclinedInputScene) drawObjectSelection(screen *ebiten.Image) {
 	title := "INCLINED PLANE - BODY TYPE"
 	utils.ScreenDraw(0, utils.XCenteredWithFont(title, textDim, "libertinus"), sh*0.1, "yellow", screen, title, "libertinus")
 
-	modeLabel := "Blocco solido"
+	modeLine := "Movimento: Blocco Solido"
 	if i.objectMode == InclinedObjectRotary {
-		modeLabel = "Elemento rotatorio"
+		modeLine = "Movimento: Rotatorio"
 	}
-	modeLine := "Tipo oggetto: " + modeLabel
 	utils.ScreenDraw(0, utils.XCenteredWithFont(modeLine, textDim, "libertinus"), sh*0.22, "cyan", screen, modeLine, "libertinus")
-
-	helpMode := "Left/Right per cambiare"
-	utils.ScreenDraw(-(textDim/4), utils.XCenteredWithFont(helpMode, textDim-(textDim/4), "libertinus"), sh*0.27, "light gray", screen, helpMode, "libertinus")
 
 	previewX := centerX - sw*0.12
 	previewY := sh * 0.38
@@ -98,19 +94,25 @@ func (i *InclinedInputScene) drawObjectSelection(screen *ebiten.Image) {
 	if i.objectMode == InclinedObjectBlock {
 		i.drawPreviewImage(screen, i.blockImage, previewX, previewY, previewSize)
 		label := "Modello: blocco senza rotazione"
-		utils.ScreenDraw(-(textDim/6), previewX+previewSize+24, previewY+previewSize*0.55, "white", screen, label, "libertinus")
+		utils.ScreenDraw(-(textDim / 6), previewX+previewSize+24, previewY+previewSize*0.55, "white", screen, label, "libertinus")
 	} else {
 		i.drawPreviewImage(screen, i.barrelImage, previewX, previewY, previewSize)
 		rotaryLabel := "Corpo: " + rotaryTypeLabel(i.rotaryType)
 		formula := rotaryInertiaFormula(i.rotaryType)
-		utils.ScreenDraw(-(textDim/8), previewX+previewSize+24, previewY+previewSize*0.35, "cyan", screen, rotaryLabel, "libertinus")
-		utils.ScreenDraw(-(textDim/6), previewX+previewSize+24, previewY+previewSize*0.65, "white", screen, formula, "libertinus")
-		typeLine := "Up/Down per forma: anello, disco, sfera, cilindro vuoto, cilindro pieno"
-		utils.ScreenDraw(-(textDim/4), utils.XCenteredWithFont(typeLine, textDim-(textDim/4), "libertinus"), sh*0.67, "light gray", screen, typeLine, "libertinus")
+		utils.ScreenDraw(-(textDim / 8), previewX+previewSize+24, previewY+previewSize*0.35, "cyan", screen, rotaryLabel, "libertinus")
+		utils.ScreenDraw(-(textDim / 6), previewX+previewSize+24, previewY+previewSize*0.65, "white", screen, formula, "libertinus")
+
+		upDown := "Up/Down per cambiare forma"
+		smallText := textDim - (textDim / 4)
+		utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(upDown, smallText, "libertinus"), sh*0.68, "light gray", screen, upDown, "libertinus")
 	}
 
+	helpMode := "Left/Right per cambiare"
+	smallText := textDim - (textDim / 4)
+	utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(helpMode, smallText, "libertinus"), sh*0.74, "light gray", screen, helpMode, "libertinus")
+
 	status := "Invio per passare ai dati"
-	utils.ScreenDraw(-(textDim/3), utils.XCenteredWithFont(status, textDim-(textDim/3), "libertinus"), sh*0.8, "light gray", screen, status, "libertinus")
+	utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(status, smallText, "libertinus"), sh*0.80, "light gray", screen, status, "libertinus")
 }
 
 func (i *InclinedInputScene) drawPreviewImage(screen *ebiten.Image, img *ebiten.Image, x, y, targetSize float64) {
@@ -134,20 +136,20 @@ func (i *InclinedInputScene) drawPreviewImage(screen *ebiten.Image, img *ebiten.
 func (i *InclinedInputScene) drawBlockInput(screen *ebiten.Image) {
 	textDim := config.GlobalConfig.TextDimension
 	spacing := textDim * 1.5
-	startY := float64(config.GlobalConfig.ScreenHeight) * 0.2
+	startY := float64(config.GlobalConfig.ScreenHeight) * 0.23
 
 	title := "INCLINED PLANE SETUP"
 	utils.ScreenDraw(0, utils.XCenteredWithFont(title, textDim, "libertinus"), startY-textDim*1.2, "yellow", screen, title, "libertinus")
 
 	lines := []string{
-		"θ (0°-89°): " + i.renderInputValueBlock(i.thetaInput, 0),
-		"μ_s (>=0, optional): " + i.renderInputValueBlock(i.muSInput, 1),
-		"μ_k (>=0, optional): " + i.renderInputValueBlock(i.muKInput, 2),
-		"m (mass > 0): " + i.renderInputValueBlock(i.massInput, 3),
-		"g (gravity): " + i.renderInputValueBlock(i.gravityInput, 4),
-		"L (length > 0, optional): " + i.renderInputValueBlock(i.lengthInput, 5),
-		"h_block (height, optional): " + i.renderInputValueBlock(i.hBlockInput, 6),
-		"v0 (initial speed, optional): " + i.renderInputValueBlock(i.v0Input, 7),
+		"m (mass > 0): " + i.renderInputValueBlock(i.massInput, 0),
+		"θ (0°-89°): " + i.renderInputValueBlock(i.thetaInput, 1),
+		"L (length > 0): " + i.renderInputValueBlock(i.lengthInput, 2),
+		"h_block (height): " + i.renderInputValueBlock(i.hBlockInput, 3),
+		"μ_s (>=0): " + i.renderInputValueBlock(i.muSInput, 4),
+		"μ_k (>=0): " + i.renderInputValueBlock(i.muKInput, 5),
+		"v0 (initial speed): " + i.renderInputValueBlock(i.v0Input, 6),
+		"g (gravity): " + i.renderInputValueBlock(i.gravityInput, 7),
 	}
 
 	for idx, line := range lines {
@@ -166,9 +168,11 @@ func (i *InclinedInputScene) drawBlockInput(screen *ebiten.Image) {
 	}
 
 	status := "Use arrows to move, Enter to confirm"
+	prevValidation := i.validationMessage
 	if i.allInputsValidBlock() {
 		status = "Values ready - press Enter to continue"
 	}
+	i.validationMessage = prevValidation
 	y := startY + float64(len(lines))*spacing + textDim*2.2
 	smallText := textDim - (textDim / 3)
 	utils.ScreenDraw(-(textDim / 3), utils.XCenteredWithFont(status, smallText, "libertinus"), y, "light gray", screen, status, "libertinus")
@@ -177,23 +181,24 @@ func (i *InclinedInputScene) drawBlockInput(screen *ebiten.Image) {
 func (i *InclinedInputScene) drawRotaryInput(screen *ebiten.Image) {
 	textDim := config.GlobalConfig.TextDimension
 	spacing := textDim * 1.5
-	startY := float64(config.GlobalConfig.ScreenHeight) * 0.2
+	startY := float64(config.GlobalConfig.ScreenHeight) * 0.23
+	optionsStartY := startY + textDim*0.55
 
 	title := "INCLINED PLANE SETUP"
-	utils.ScreenDraw(0, utils.XCenteredWithFont(title, textDim, "libertinus"), startY-textDim*1.2, "yellow", screen, title, "libertinus")
+	utils.ScreenDraw(0, utils.XCenteredWithFont(title, textDim, "libertinus"), startY-textDim*1.8, "yellow", screen, title, "libertinus")
 
 	modeLine := "Corpo: " + rotaryTypeLabel(i.rotaryType)
-	utils.ScreenDraw(-(textDim/4), utils.XCenteredWithFont(modeLine, textDim-(textDim/4), "libertinus"), startY-textDim*0.6, "cyan", screen, modeLine, "libertinus")
+	utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(modeLine, textDim-(textDim/4), "libertinus"), startY-textDim*0.35, "cyan", screen, modeLine, "libertinus")
 
 	lines := []string{
-		"θ (0°-89°): " + i.renderInputValueRotary(i.thetaInput, 0),
-		"μ_r (>=0): " + i.renderInputValueRotary(i.muRInput, 1),
-		"m (mass > 0): " + i.renderInputValueRotary(i.massInput, 2),
-		"g (gravity): " + i.renderInputValueRotary(i.gravityInput, 3),
-		"L (length > 0, optional): " + i.renderInputValueRotary(i.lengthInput, 4),
-		"h_block (height, optional): " + i.renderInputValueRotary(i.hBlockInput, 5),
-		"v0 (initial speed, optional): " + i.renderInputValueRotary(i.v0Input, 6),
-		"r (radius > 0): " + i.renderInputValueRotary(i.radiusInput, 7),
+		"m (mass > 0): " + i.renderInputValueRotary(i.massInput, 0),
+		"r (radius > 0): " + i.renderInputValueRotary(i.radiusInput, 1),
+		"θ (0°-89°): " + i.renderInputValueRotary(i.thetaInput, 2),
+		"L (length > 0): " + i.renderInputValueRotary(i.lengthInput, 3),
+		"h_block (height): " + i.renderInputValueRotary(i.hBlockInput, 4),
+		"μ_r (>=0): " + i.renderInputValueRotary(i.muRInput, 5),
+		"v0 (initial speed): " + i.renderInputValueRotary(i.v0Input, 6),
+		"g (gravity): " + i.renderInputValueRotary(i.gravityInput, 7),
 	}
 
 	for idx, line := range lines {
@@ -201,21 +206,23 @@ func (i *InclinedInputScene) drawRotaryInput(screen *ebiten.Image) {
 		if idx == i.activeField {
 			color = "cyan"
 		}
-		y := startY + float64(idx)*spacing
+		y := optionsStartY + float64(idx)*spacing
 		utils.ScreenDraw(0, utils.XCenteredWithFont(line, textDim, "libertinus"), y, color, screen, line, "libertinus")
 	}
 
 	if i.validationMessage != "" {
-		y := startY + float64(len(lines))*spacing + textDim
+		y := optionsStartY + float64(len(lines))*spacing + textDim
 		smallText := textDim - (textDim / 4)
 		utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(i.validationMessage, smallText, "libertinus"), y, "red", screen, i.validationMessage, "libertinus")
 	}
 
 	status := "Use arrows to move, Enter to confirm"
+	prevValidation := i.validationMessage
 	if i.allInputsValidRotary() {
 		status = "Values ready - press Enter to continue"
 	}
-	y := startY + float64(len(lines))*spacing + textDim*2.2
+	i.validationMessage = prevValidation
+	y := optionsStartY + float64(len(lines))*spacing + textDim*2.2
 	smallText := textDim - (textDim / 3)
 	utils.ScreenDraw(-(textDim / 3), utils.XCenteredWithFont(status, smallText, "libertinus"), y, "light gray", screen, status, "libertinus")
 }
@@ -226,14 +233,14 @@ func (i *InclinedInputScene) FirstLoad() {
 	i.objectMode = InclinedObjectBlock
 	i.rotaryType = RotaryDisk
 	i.thetaInput = ""
-	i.muSInput = ""
-	i.muKInput = ""
-	i.muRInput = ""
+	i.muSInput = "0"
+	i.muKInput = "0"
+	i.muRInput = "0"
 	i.massInput = ""
 	i.gravityInput = "9.8"
 	i.lengthInput = ""
 	i.hBlockInput = ""
-	i.v0Input = ""
+	i.v0Input = "0"
 	i.radiusInput = ""
 	i.lastBlink = time.Now()
 	i.validationMessage = ""
@@ -354,17 +361,17 @@ func (i *InclinedInputScene) renderInputValueBlock(value string, fieldIndex int)
 		unit := ""
 		switch fieldIndex {
 		case 0:
-			unit = "°"
-		case 3:
 			unit = " kg"
-		case 4:
-			unit = " m/s^2"
-		case 5:
+		case 1:
+			unit = "°"
+		case 2:
+			unit = " m"
+		case 3:
 			unit = " m"
 		case 6:
-			unit = " m"
-		case 7:
 			unit = " m/s"
+		case 7:
+			unit = " m/s^2"
 		}
 		return value + unit
 	}
@@ -379,19 +386,19 @@ func (i *InclinedInputScene) renderInputValueRotary(value string, fieldIndex int
 		unit := ""
 		switch fieldIndex {
 		case 0:
-			unit = "°"
-		case 2:
 			unit = " kg"
-		case 3:
-			unit = " m/s^2"
-		case 4:
+		case 1:
 			unit = " m"
-		case 5:
+		case 2:
+			unit = "°"
+		case 3:
+			unit = " m"
+		case 4:
 			unit = " m"
 		case 6:
 			unit = " m/s"
 		case 7:
-			unit = " m"
+			unit = " m/s^2"
 		}
 		return value + unit
 	}
@@ -416,42 +423,42 @@ func (i *InclinedInputScene) handleActiveFieldInput() {
 	if i.objectMode == InclinedObjectRotary {
 		switch i.activeField {
 		case 0:
-			i.handleNumericInput(&i.thetaInput)
-		case 1:
-			i.handleNumericInput(&i.muRInput)
-		case 2:
 			i.handleNumericInput(&i.massInput)
+		case 1:
+			i.handleNumericInput(&i.radiusInput)
+		case 2:
+			i.handleNumericInput(&i.thetaInput)
 		case 3:
-			i.handleNumericInput(&i.gravityInput)
-		case 4:
 			i.handleNumericInput(&i.lengthInput)
-		case 5:
+		case 4:
 			i.handleNumericInput(&i.hBlockInput)
+		case 5:
+			i.handleNumericInput(&i.muRInput)
 		case 6:
 			i.handleNumericInput(&i.v0Input)
 		case 7:
-			i.handleNumericInput(&i.radiusInput)
+			i.handleNumericInput(&i.gravityInput)
 		}
 		return
 	}
 
 	switch i.activeField {
 	case 0:
-		i.handleNumericInput(&i.thetaInput)
-	case 1:
-		i.handleNumericInput(&i.muSInput)
-	case 2:
-		i.handleNumericInput(&i.muKInput)
-	case 3:
 		i.handleNumericInput(&i.massInput)
-	case 4:
-		i.handleNumericInput(&i.gravityInput)
-	case 5:
+	case 1:
+		i.handleNumericInput(&i.thetaInput)
+	case 2:
 		i.handleNumericInput(&i.lengthInput)
-	case 6:
+	case 3:
 		i.handleNumericInput(&i.hBlockInput)
-	case 7:
+	case 4:
+		i.handleNumericInput(&i.muSInput)
+	case 5:
+		i.handleNumericInput(&i.muKInput)
+	case 6:
 		i.handleNumericInput(&i.v0Input)
+	case 7:
+		i.handleNumericInput(&i.gravityInput)
 	}
 }
 
@@ -491,49 +498,49 @@ func (i *InclinedInputScene) tryConfirmActiveField() bool {
 func (i *InclinedInputScene) tryConfirmActiveFieldBlock() bool {
 	switch i.activeField {
 	case 0:
-		_, ok := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle)
-		if !ok {
-			i.validationMessage = "θ must be between 0 and 89"
-			return false
-		}
-	case 1:
-		_, ok, _ := parseOptionalNonNegative(i.muSInput)
-		if !ok {
-			i.validationMessage = "μ_s must be >= 0"
-			return false
-		}
-	case 2:
-		_, ok, _ := parseOptionalNonNegative(i.muKInput)
-		if !ok {
-			i.validationMessage = "μ_k must be >= 0"
-			return false
-		}
-	case 3:
 		_, ok, _ := parseOptionalMin(i.massInput, 0)
 		if !ok {
 			i.validationMessage = "m must be greater than 0"
 			return false
 		}
-	case 4:
-		_, ok, _ := parseOptionalMin(i.gravityInput, 0)
+	case 1:
+		_, ok := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle)
 		if !ok {
-			i.validationMessage = "g must be greater than 0"
+			i.validationMessage = "θ must be between 0 and 89"
 			return false
 		}
-	case 5:
+	case 2:
 		_, ok, _ := parseOptionalMin(i.lengthInput, 0)
 		if !ok {
 			i.validationMessage = "L must be greater than 0"
 			return false
 		}
-	case 6:
+	case 3:
 		if !i.validateHBlock() {
 			return false
 		}
-	case 7:
+	case 4:
+		_, ok, _ := parseOptionalNonNegative(i.muSInput)
+		if !ok {
+			i.validationMessage = "μ_s must be >= 0"
+			return false
+		}
+	case 5:
+		_, ok, _ := parseOptionalNonNegative(i.muKInput)
+		if !ok {
+			i.validationMessage = "μ_k must be >= 0"
+			return false
+		}
+	case 6:
 		_, ok, _ := parseOptionalNonNegative(i.v0Input)
 		if !ok {
 			i.validationMessage = "v0 must be >= 0"
+			return false
+		}
+	case 7:
+		_, ok, _ := parseOptionalMin(i.gravityInput, 0)
+		if !ok {
+			i.validationMessage = "g must be greater than 0"
 			return false
 		}
 	}
@@ -543,37 +550,41 @@ func (i *InclinedInputScene) tryConfirmActiveFieldBlock() bool {
 func (i *InclinedInputScene) tryConfirmActiveFieldRotary() bool {
 	switch i.activeField {
 	case 0:
-		_, ok := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle)
-		if !ok {
-			i.validationMessage = "θ must be between 0 and 89"
-			return false
-		}
-	case 1:
-		_, ok := parseRequiredNonNegative(i.muRInput)
-		if !ok {
-			i.validationMessage = "μ_r must be >= 0"
-			return false
-		}
-	case 2:
 		_, ok, _ := parseOptionalMin(i.massInput, 0)
 		if !ok {
 			i.validationMessage = "m must be greater than 0"
 			return false
 		}
-	case 3:
-		_, ok, _ := parseOptionalMin(i.gravityInput, 0)
-		if !ok {
-			i.validationMessage = "g must be greater than 0"
+	case 1:
+		if strings.TrimSpace(i.radiusInput) == "" {
+			i.validationMessage = "r is required"
 			return false
 		}
-	case 4:
+		_, ok := parseRequiredMin(i.radiusInput, 0)
+		if !ok {
+			i.validationMessage = "r must be greater than 0"
+			return false
+		}
+	case 2:
+		_, ok := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle)
+		if !ok {
+			i.validationMessage = "θ must be between 0 and 89"
+			return false
+		}
+	case 3:
 		_, ok, _ := parseOptionalMin(i.lengthInput, 0)
 		if !ok {
 			i.validationMessage = "L must be greater than 0"
 			return false
 		}
-	case 5:
+	case 4:
 		if !i.validateHBlock() {
+			return false
+		}
+	case 5:
+		_, ok := parseRequiredNonNegative(i.muRInput)
+		if !ok {
+			i.validationMessage = "μ_r must be >= 0"
 			return false
 		}
 	case 6:
@@ -583,9 +594,9 @@ func (i *InclinedInputScene) tryConfirmActiveFieldRotary() bool {
 			return false
 		}
 	case 7:
-		_, ok, _ := parseOptionalMin(i.radiusInput, 0)
+		_, ok, _ := parseOptionalMin(i.gravityInput, 0)
 		if !ok {
-			i.validationMessage = "r must be greater than 0"
+			i.validationMessage = "g must be greater than 0"
 			return false
 		}
 	}
@@ -658,7 +669,12 @@ func (i *InclinedInputScene) allInputsValidRotary() bool {
 	if _, ok, _ := parseOptionalNonNegative(i.v0Input); !ok {
 		return false
 	}
-	if _, ok, _ := parseOptionalMin(i.radiusInput, 0); !ok {
+	if strings.TrimSpace(i.radiusInput) == "" {
+		i.validationMessage = "r is required"
+		return false
+	}
+	if _, ok := parseRequiredMin(i.radiusInput, 0); !ok {
+		i.validationMessage = "r must be greater than 0"
 		return false
 	}
 	if strings.TrimSpace(i.lengthInput) == "" && strings.TrimSpace(i.hBlockInput) == "" {
@@ -714,7 +730,7 @@ func (i *InclinedInputScene) storeValues() {
 	config.GlobalConfig.InclinedGravitySet = gravitySet
 
 	if i.objectMode == InclinedObjectRotary {
-		radius, _, _ := parseOptionalMin(i.radiusInput, 0)
+		radius, _ := parseRequiredMin(i.radiusInput, 0)
 		muR, _ := parseRequiredNonNegative(i.muRInput)
 		config.GlobalConfig.InclinedRadius = radius
 		config.GlobalConfig.InclinedMuR = muR

@@ -669,12 +669,14 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 		contactInset := 1.5
 
 		if rotateByPhysics {
+			// Mantiene il pivot al centro come prima, ma leggermente sollevato dal piano.
+			lift := math.Max(2.0, bH*0.07)
 			cx := gx - bW/2
-			cy := triBaseY + contactInset - bH/2
+			cy := triBaseY + contactInset - bH/2 - lift
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(bScale, bScale)
 			op.GeoM.Translate(-bW/2, -bH/2)
-			op.GeoM.Rotate(-i.simState.RotationAngle)
+			op.GeoM.Rotate(i.simState.RotationAngle)
 			op.GeoM.Translate(cx, cy)
 			screen.DrawImage(bodyImage, op)
 			return
@@ -705,12 +707,14 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	sy := syTouch + math.Cos(thetaRad)*contactInset
 
 	if rotateByPhysics {
-		cx := sx - bW/2
-		cy := sy - bH/2
+		// Mantiene il pivot al centro e solleva lo sprite lungo la normale esterna al piano.
+		lift := math.Max(2.0, bH*0.07)
+		cx := sx - bW/2 + math.Sin(thetaRad)*lift
+		cy := sy - bH/2 - math.Cos(thetaRad)*lift
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(bScale, bScale)
 		op.GeoM.Translate(-bW/2, -bH/2)
-		op.GeoM.Rotate(-i.simState.RotationAngle)
+		op.GeoM.Rotate(i.simState.RotationAngle)
 		op.GeoM.Translate(cx, cy)
 		screen.DrawImage(bodyImage, op)
 		return

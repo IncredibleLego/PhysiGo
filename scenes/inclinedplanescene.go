@@ -78,67 +78,97 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 		status = "COMPLETED - Press R to reset"
 	}
 
+	phaseLabel := phaseDisplayName(i.simState.Phase)
+	frictionWork := i.currentFrictionWork(i.simState)
+
 	leftLines := []string{
 		"LIVE DATA",
 		fmt.Sprintf("status: %s", status),
-		fmt.Sprintf("phase: %s", i.simState.Phase),
+		fmt.Sprintf("Phase: %s", phaseLabel),
 		fmt.Sprintf("t: %.2f s", i.simState.Time),
-		fmt.Sprintf("a: %.2f m/s^2", i.calc.CurrentAcceleration(i.simState.Phase)),
 		fmt.Sprintf("v: %.2f m/s", i.simState.Velocity),
-		fmt.Sprintf("s (incline): %.2f m", i.simState.S),
-		fmt.Sprintf("x (ground): %.2f m", i.simState.HorizS),
-		fmt.Sprintf("h block: %.2f m", i.simState.HBlock),
-		fmt.Sprintf("dist from base: %.2f m", i.calc.DistanceFromBase(i.simState.S, i.simState.Phase)),
-		fmt.Sprintf("dist from origin: %.2f m", i.simState.S+i.simState.HorizS),
-		fmt.Sprintf("K trans: %.2f J", i.simState.KineticTranslational),
-		fmt.Sprintf("K rot: %.2f J", i.simState.KineticRotational),
-		fmt.Sprintf("U grav: %.2f J", i.simState.PotentialEnergy),
+		fmt.Sprintf("a: %.2f m/s^2", i.calc.CurrentAcceleration(i.simState.Phase)),
+		fmt.Sprintf("s (Inclined): %.2f m", i.simState.S),
+		fmt.Sprintf("s (ground): %.2f m", i.simState.HorizS),
+		fmt.Sprintf("s Tot: %.2f m", i.simState.S+i.simState.HorizS),
+		fmt.Sprintf("h: %.2f m", i.simState.HBlock),
+		"",
+		fmt.Sprintf("K (trans): %.2f J", i.simState.KineticTranslational),
+		fmt.Sprintf("K (rot): %.2f J", i.simState.KineticRotational),
+		fmt.Sprintf("U: %.2f J", i.simState.PotentialEnergy),
+		fmt.Sprintf("W friction: %.2f J", frictionWork),
 		fmt.Sprintf("W total: %.2f J", i.simState.TotalWork),
-		fmt.Sprintf("E mech: %.2f J", i.simState.TotalMechanical),
-		fmt.Sprintf("omega: %.2f rad/s", i.simState.AngularVelocity),
-		fmt.Sprintf("alpha: %.2f rad/s^2", i.simState.AngularAcceleration),
-		fmt.Sprintf("phi: %.2f rad", i.simState.RotationAngle),
 	}
 
 	bodyLabel := "blocco"
-	rotaryShapeLabel := "-"
-	rotaryFormula := "-"
-	frictionCoeffLineA := fmt.Sprintf("μ_s: %.2f", i.snapshot.muS)
-	frictionCoeffLineB := fmt.Sprintf("μ_k: %.2f", i.snapshot.muK)
-	frictionForceLabel := fmt.Sprintf("Fk: %.1f N", i.calc.DynamicFriction)
-	if i.calc.ObjectMode == InclinedObjectRotary {
+	isRotary := i.calc.ObjectMode == InclinedObjectRotary
+	if isRotary {
 		bodyLabel = "rotatorio"
-		rotaryShapeLabel = rotaryTypeLabel(i.calc.RotaryType)
-		rotaryFormula = rotaryInertiaFormula(i.calc.RotaryType)
-		frictionCoeffLineA = fmt.Sprintf("μ_r: %.2f", i.snapshot.muR)
-		frictionCoeffLineB = ""
-		frictionForceLabel = fmt.Sprintf("Fv: %.1f N", i.calc.DynamicFriction)
 	}
 
-	rightLines := []string{
-		"PLANE DATA",
-		fmt.Sprintf("body: %s", bodyLabel),
-		fmt.Sprintf("shape: %s", rotaryShapeLabel),
-		fmt.Sprintf("I formula: %s", rotaryFormula),
-		fmt.Sprintf("radius: %.2f m", i.calc.Radius),
-		fmt.Sprintf("inertia I: %.3f kg*m^2", i.calc.MomentOfInertia),
-		fmt.Sprintf("mass: %.1f kg", i.snapshot.mass),
-		fmt.Sprintf("gravity: %.1f m/s^2", i.snapshot.gravity),
-		fmt.Sprintf("θ: %.1f°", i.snapshot.theta),
-		fmt.Sprintf("length L: %.1f m", i.snapshot.length),
-		fmt.Sprintf("h0 block: %.1f m", i.calc.InitialHeight),
-		fmt.Sprintf("v0: %.1f m/s", i.snapshot.v0),
-		fmt.Sprintf("P||: %.1f N", i.calc.WeightParallel),
-		fmt.Sprintf("N: %.1f N", i.calc.Normal),
-		fmt.Sprintf("Fs,max: %.1f N", i.calc.StaticFrictionMax),
-		frictionForceLabel,
-		fmt.Sprintf("F net: %.1f N", i.calc.NetForce),
-		fmt.Sprintf("slides: %t", i.calc.Slides),
+	muSLabel := "-"
+	if i.snapshot.muSSet {
+		muSLabel = fmt.Sprintf("%.2f", i.snapshot.muS)
+	}
+	muKLabel := "-"
+	if i.snapshot.muKSet {
+		muKLabel = fmt.Sprintf("%.2f", i.snapshot.muK)
+	}
+	muRLabel := "-"
+	if i.snapshot.muRSet {
+		muRLabel = fmt.Sprintf("%.2f", i.snapshot.muR)
 	}
 
-	rightLines = append(rightLines[:12], append([]string{frictionCoeffLineA}, rightLines[12:]...)...)
-	if frictionCoeffLineB != "" {
-		rightLines = append(rightLines[:13], append([]string{frictionCoeffLineB}, rightLines[13:]...)...)
+	rotaryShapeLabel := rotaryTypeLabel(i.calc.RotaryType)
+	rotaryFormula := rotaryInertiaFormula(i.calc.RotaryType)
+
+	fTotalBlock := i.calc.WeightParallel
+	fAttrito := i.calc.DynamicFriction
+	if isRotary {
+		fAttrito = 0
+	}
+
+	rightLines := []string{}
+	if isRotary {
+		rollingForce := i.calc.Mass * i.calc.HorizontalDecel
+		rightLines = []string{
+			"PLANE DATA",
+			fmt.Sprintf("Body: %s", bodyLabel),
+			fmt.Sprintf("Shape: %s", rotaryShapeLabel),
+			fmt.Sprintf("I formula: %s", rotaryFormula),
+			fmt.Sprintf("Radius: %.2f m", i.calc.Radius),
+			fmt.Sprintf("Inertia I: %.3f kg*m^2", i.calc.MomentOfInertia),
+			fmt.Sprintf("Mass (m): %.2f kg", i.snapshot.mass),
+			fmt.Sprintf("Gravity (g): %.2f m/s^2", i.snapshot.gravity),
+			fmt.Sprintf("θ: %.1f°", i.snapshot.theta),
+			fmt.Sprintf("Length (L): %.2f m", i.snapshot.length),
+			fmt.Sprintf("Block Height (h): %.2f m", i.calc.InitialHeight),
+			fmt.Sprintf("v0: %.2f m/s", i.snapshot.v0),
+			fmt.Sprintf("μ_r: %s", muRLabel),
+			"",
+			fmt.Sprintf("F total (body): %.2f N", fTotalBlock),
+			fmt.Sprintf("Fr (rolling): %.2f N", rollingForce),
+			fmt.Sprintf("Ftot - Fr (net): %.2f N", i.calc.NetForce),
+			fmt.Sprintf("Slides: %t", i.calc.Slides),
+		}
+	} else {
+		rightLines = []string{
+			"PLANE DATA",
+			fmt.Sprintf("Body: %s", bodyLabel),
+			fmt.Sprintf("Mass (m): %.2f kg", i.snapshot.mass),
+			fmt.Sprintf("Gravity (g): %.2f m/s^2", i.snapshot.gravity),
+			fmt.Sprintf("θ: %.1f°", i.snapshot.theta),
+			fmt.Sprintf("Length (L): %.2f m", i.snapshot.length),
+			fmt.Sprintf("Block Height (h): %.2f m", i.calc.InitialHeight),
+			fmt.Sprintf("v0: %.2f m/s", i.snapshot.v0),
+			fmt.Sprintf("μ_s: %s", muSLabel),
+			fmt.Sprintf("μ_k: %s", muKLabel),
+			"",
+			fmt.Sprintf("F total (block): %.2f N", fTotalBlock),
+			fmt.Sprintf("Fa (friction): %.2f N", fAttrito),
+			fmt.Sprintf("Ftot - Fa (net): %.2f N", i.calc.NetForce),
+			fmt.Sprintf("Slides: %t", i.calc.Slides),
+		}
 	}
 
 	liveDataBottom := y + float64(len(leftLines))*step + textDim*0.25
@@ -178,61 +208,14 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 	resultLines := make([]struct {
 		text string
 		col  string
-	}, 0, 3)
+	}, 0, 14)
 
 	baseState := InclinedPlaneSimState{}
 	hasBaseState := i.calc.Slides && !i.calc.StopsOnIncline && i.calc.TimeToBase >= 0
-	if hasBaseState {
+	if hasBaseState && i.simState.BaseReached {
 		baseState = i.calc.ComputeStateAtTime(i.calc.TimeToBase)
 	}
 
-	if i.simState.BaseReached {
-		resultLines = append(resultLines, struct {
-			text string
-			col  string
-		}{
-			text: fmt.Sprintf("BASE t=%.3fs  v=%.3fm/s", i.simState.BaseReachTime, i.simState.BaseReachVelocity),
-			col:  "green",
-		})
-
-		if hasBaseState {
-			resultLines = append(resultLines, struct {
-				text string
-				col  string
-			}{
-				text: fmt.Sprintf("AT BASE  Kt=%.3fJ  Kr=%.3fJ  W=%.3fJ", baseState.KineticTranslational, baseState.KineticRotational, baseState.TotalWork),
-				col:  "cyan",
-			})
-
-			if i.calc.HorizontalDecel > 0 {
-				resultLines = append(resultLines, struct {
-					text string
-					col  string
-				}{
-					text: fmt.Sprintf("PHASE 2  a=%.3fm/s^2  t=%.3fs  x=%.3fm", -i.calc.HorizontalDecel, i.calc.HorizontalStopTime, i.calc.HorizontalStopDist),
-					col:  "orange",
-				})
-			}
-		}
-	}
-	if i.simState.SimulationEnded {
-		resultLines = append(resultLines, struct {
-			text string
-			col  string
-		}{
-			text: fmt.Sprintf("STOP total t=%.3fs  x=%.3fm", i.simState.SimulationEndTime, i.simState.SimulationEndHorizS),
-			col:  "green",
-		})
-	}
-	if i.simState.BaseReached && !i.simState.SimulationEnded && i.calc.HorizontalDecel <= 0 {
-		resultLines = append(resultLines, struct {
-			text string
-			col  string
-		}{
-			text: "No horizontal friction",
-			col:  "orange",
-		})
-	}
 	if !i.calc.Slides {
 		resultLines = append(resultLines, struct {
 			text string
@@ -241,14 +224,142 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 			text: "BLOCK DOES NOT MOVE",
 			col:  "red",
 		})
+	} else {
+		resultLines = append(resultLines, struct {
+			text string
+			col  string
+		}{
+			text: "INCLINED PHASE",
+			col:  "yellow",
+		})
+
+		if hasBaseState && i.simState.BaseReached {
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: "Values at base",
+				col:  "cyan",
+			})
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: fmt.Sprintf("t: %.3fs  v: %.3fm/s", i.calc.TimeToBase, i.calc.VelocityAtBase),
+				col:  "white",
+			})
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: fmt.Sprintf("a: %.3fm/s^2", i.calc.Acceleration),
+				col:  "white",
+			})
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: fmt.Sprintf("K: %.3fJ  W: %.3fJ", baseState.KineticTranslational+baseState.KineticRotational, baseState.TotalWork),
+				col:  "white",
+			})
+		}
+
+		showHorizontalPhase := i.simState.BaseReached && (i.simState.SimulationEnded || i.calc.HorizontalDecel <= 0)
+		if showHorizontalPhase {
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: "",
+				col:  "white",
+			})
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: "HORIZONTAL PHASE",
+				col:  "yellow",
+			})
+			if i.calc.HorizontalDecel > 0 {
+				resultLines = append(resultLines, struct {
+					text string
+					col  string
+				}{
+					text: fmt.Sprintf("t: %.3fs", i.calc.HorizontalStopTime),
+					col:  "white",
+				})
+				resultLines = append(resultLines, struct {
+					text string
+					col  string
+				}{
+					text: fmt.Sprintf("a: %.3fm/s^2", -i.calc.HorizontalDecel),
+					col:  "white",
+				})
+				resultLines = append(resultLines, struct {
+					text string
+					col  string
+				}{
+					text: fmt.Sprintf("x: %.3fm", i.calc.HorizontalStopDist),
+					col:  "white",
+				})
+			}
+		}
+
+		if i.simState.BaseReached && !i.simState.SimulationEnded && i.calc.HorizontalDecel <= 0 {
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: "No horizontal friction",
+				col:  "orange",
+			})
+		}
+
+		if i.simState.SimulationEnded {
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: "",
+				col:  "white",
+			})
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: "FINAL RECAP",
+				col:  "green",
+			})
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: fmt.Sprintf("t tot: %.3fs", i.simState.SimulationEndTime),
+				col:  "white",
+			})
+			resultLines = append(resultLines, struct {
+				text string
+				col  string
+			}{
+				text: fmt.Sprintf("x tot: %.3fm", i.calc.DistanceToBase+i.simState.SimulationEndHorizS),
+				col:  "white",
+			})
+		}
 	}
 
 	for idx, line := range resultLines {
 		drawCentered(line.text, line.col, resultY+float64(idx)*resultGap)
 	}
 
-	controls := "SPACE: start/pause  <-/->: scrub timeline  R: reset  ENTER: menu"
-	utils.ScreenDraw(smallSize, textDim/3, sh-textDim*0.9, "light gray", screen, controls, "libertinus")
+	controls := "SPACE: start/pause <-/-> timeline R: reset ENTER: menu"
+	_, barY, _, barH := i.progressBarRect()
+	controlsW, _ := utils.MeasureTextWithSize(controls, textSize, "libertinus")
+	controlsX := sw/2 - controlsW/2
+	controlsY := barY + barH + textDim*0.85
+	if controlsY > sh-textDim*0.3 {
+		controlsY = sh - textDim*0.3
+	}
+	utils.ScreenDraw(smallSize, controlsX, controlsY, "light gray", screen, controls, "libertinus")
 
 	i.drawTimelineControls(screen)
 }
@@ -622,15 +733,15 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 		y0 := triBaseY - float64(arcRadius)*math.Sin(a0)
 		x1 := triX1 + float64(arcRadius)*math.Cos(a1)
 		y1 := triBaseY - float64(arcRadius)*math.Sin(a1)
-		vector.StrokeLine(screen, float32(x0), float32(y0), float32(x1), float32(y1), 2, color.RGBA{255, 220, 40, 230}, false)
+		vector.StrokeLine(screen, float32(x0), float32(y0), float32(x1), float32(y1), 2.2, color.RGBA{245, 70, 70, 255}, false)
 	}
 
 	// Etichetta θ
-	labelX := triX0 + triBaseW*0.06
-	labelY := triBaseY - float64(arcRadius)*1.15
+	labelX := triX1 - float64(arcRadius)*1.6
+	labelY := triBaseY - float64(arcRadius)*0.95
 	angleText := fmt.Sprintf("θ=%.1f°", i.calc.Theta)
 	utils.ScreenDraw(-(textDim * 0.4), labelX+1.5, labelY+1.5, "black", screen, angleText, "libertinus")
-	utils.ScreenDraw(-(textDim * 0.4), labelX, labelY, "cyan", screen, angleText, "libertinus")
+	utils.ScreenDraw(-(textDim * 0.4), labelX, labelY, "red", screen, angleText, "libertinus")
 
 	// Body sprite (block or rotating barrel)
 	bodyImage := i.blockImage
@@ -726,6 +837,44 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	op.GeoM.Rotate(thetaRad)
 	op.GeoM.Translate(sx, sy)
 	screen.DrawImage(bodyImage, op)
+}
+
+func phaseDisplayName(phase string) string {
+	switch phase {
+	case "horizontal":
+		return "Horizontal"
+	case "stopped":
+		return "Stopped"
+	default:
+		return "Inclined Plane"
+	}
+}
+
+func (i *InclinedPlaneScene) currentFrictionForce(state InclinedPlaneSimState) float64 {
+	if !i.calc.Slides {
+		return 0
+	}
+	if state.Phase == "incline" || state.Phase == "ready" {
+		if i.calc.ObjectMode == InclinedObjectRotary {
+			return 0
+		}
+		return i.calc.DynamicFriction
+	}
+	if state.Phase == "horizontal" && i.calc.HorizontalDecel > 0 {
+		return i.calc.Mass * i.calc.HorizontalDecel
+	}
+	return 0
+}
+
+func (i *InclinedPlaneScene) currentFrictionWork(state InclinedPlaneSimState) float64 {
+	work := 0.0
+	if i.calc.ObjectMode != InclinedObjectRotary && i.calc.DynamicFriction > 0 && state.S > 0 {
+		work -= i.calc.DynamicFriction * state.S
+	}
+	if i.calc.HorizontalDecel > 0 && state.HorizS > 0 {
+		work -= i.calc.Mass * i.calc.HorizontalDecel * state.HorizS
+	}
+	return work
 }
 
 var _ Scene = (*InclinedPlaneScene)(nil)

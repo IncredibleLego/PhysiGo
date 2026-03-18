@@ -2,12 +2,8 @@ package scenes
 
 import (
 	"fmt"
-	"image"
 	"image/color"
-	_ "image/jpeg"
-	_ "image/png"
 	"math"
-	"os"
 	"physiGo/config"
 	"physiGo/utils"
 
@@ -294,110 +290,37 @@ func (p *ProjectileMotionScene) handleKeyboardScrub() {
 	if p.solveError != "" {
 		return
 	}
-	total := p.calc.TotalDuration()
-	if total <= 0 {
+	delta, ok := timelineScrubDelta(p.calc.TotalDuration())
+	if !ok {
 		return
 	}
-
-	step := total * 0.02
-	if step < 0.05 {
-		step = 0.05
-	}
-
-	advance := func(key ebiten.Key, delta float64) {
-		// Supporta anche pressione prolungata per uno scorrimento continuo.
-		pressed := inpututil.IsKeyJustPressed(key)
-		dur := inpututil.KeyPressDuration(key)
-		if !pressed && dur > 10 && dur%3 == 0 {
-			pressed = true
-		}
-		if !pressed {
-			return
-		}
-		p.started = false
-		p.simState = p.calc.ComputeStateAtTime(p.simState.Time + delta)
-	}
-
-	advance(ebiten.KeyArrowRight, step)
-	advance(ebiten.KeyArrowLeft, -step)
+	p.started = false
+	p.simState = p.calc.ComputeStateAtTime(p.simState.Time + delta)
 }
 
 func (p *ProjectileMotionScene) loadControlImages() {
 	// Carica le icone UI (play/pause) e lo sprite del proiettile.
-	load := func(path string) *ebiten.Image {
-		file, err := os.Open(path)
-		if err != nil {
-			return nil
-		}
-		defer file.Close()
-		img, _, err := image.Decode(file)
-		if err != nil {
-			return nil
-		}
-		return ebiten.NewImageFromImage(img)
-	}
-
-	p.playImage = load("img/play.png")
-	p.pauseImage = load("img/pause.png")
-	p.arrowImage = load("img/arrow.png")
+	p.playImage = loadImage("img/play.png")
+	p.pauseImage = loadImage("img/pause.png")
+	p.arrowImage = loadImage("img/arrow.png")
 }
 
 func (p *ProjectileMotionScene) playButtonRect() (float64, float64, float64, float64) {
-	textDim := config.GlobalConfig.TextDimension
-	buttonSize := textDim * 1.25
-	barX := float64(config.GlobalConfig.ScreenWidth) * 0.2
-	barY := float64(config.GlobalConfig.ScreenHeight) - textDim*2.1
-	buttonX := barX - buttonSize - textDim*0.45
-	buttonY := barY - (buttonSize-textDim*0.5)/2
-	return buttonX, buttonY, buttonSize, buttonSize
+	button, _ := timelineRects()
+	return button.x, button.y, button.w, button.h
 }
 
 func (p *ProjectileMotionScene) progressBarRect() (float64, float64, float64, float64) {
-	textDim := config.GlobalConfig.TextDimension
-	barX := float64(config.GlobalConfig.ScreenWidth) * 0.2
-	barW := float64(config.GlobalConfig.ScreenWidth) * 0.6
-	barH := textDim * 0.45
-	barY := float64(config.GlobalConfig.ScreenHeight) - textDim*2.0
-	return barX, barY, barW, barH
+	_, bar := timelineRects()
+	return bar.x, bar.y, bar.w, bar.h
 }
 
 func (p *ProjectileMotionScene) drawTimelineControls(screen *ebiten.Image) {
 	// Disegna bottone play/pause, barra progresso e cursore temporale.
-	btnX, btnY, btnW, btnH := p.playButtonRect()
-	barX, barY, barW, barH := p.progressBarRect()
-
-	vector.DrawFilledRect(screen, float32(btnX), float32(btnY), float32(btnW), float32(btnH), color.RGBA{40, 40, 40, 255}, false)
-
-	icon := p.playImage
-	if p.started && !p.simState.Completed {
-		icon = p.pauseImage
-	}
-
-	if icon != nil {
-		imgW, imgH := icon.Bounds().Dx(), icon.Bounds().Dy()
-		if imgW > 0 && imgH > 0 {
-			scale := math.Min(btnW*0.8/float64(imgW), btnH*0.8/float64(imgH))
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Scale(scale, scale)
-			drawW := float64(imgW) * scale
-			drawH := float64(imgH) * scale
-			op.GeoM.Translate(btnX+(btnW-drawW)/2, btnY+(btnH-drawH)/2)
-			screen.DrawImage(icon, op)
-		}
-	}
-
-	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW), float32(barH), color.RGBA{55, 55, 55, 255}, false)
-	progress := p.calc.SimProgress(p.simState.Time)
-	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW*progress), float32(barH), color.RGBA{30, 170, 90, 255}, false)
-
-	knobX := barX + barW*progress
-	if knobX < barX {
-		knobX = barX
-	}
-	if knobX > barX+barW {
-		knobX = barX + barW
-	}
-	vector.DrawFilledRect(screen, float32(knobX-2), float32(barY-4), 4, float32(barH+8), color.RGBA{230, 230, 230, 255}, false)
+	button, bar := timelineRects()
+	running := p.started && !p.simState.Completed
+	drawTimelineButton(screen, button, running, p.playImage, p.pauseImage, "")
+	drawTimelineBar(screen, bar, p.calc.SimProgress(p.simState.Time), -1)
 }
 
 func (p *ProjectileMotionScene) handleMouseControl() {
@@ -410,26 +333,19 @@ func (p *ProjectileMotionScene) handleMouseControl() {
 	px := float64(mx)
 	py := float64(my)
 
-	btnX, btnY, btnW, btnH := p.playButtonRect()
-	if px >= btnX && px <= btnX+btnW && py >= btnY && py <= btnY+btnH {
+	button, bar := timelineRects()
+	if button.contains(px, py) {
 		p.toggleRunState()
 		return
 	}
 
-	barX, barY, barW, barH := p.progressBarRect()
-	if px >= barX && px <= barX+barW && py >= barY && py <= barY+barH {
+	if bar.contains(px, py) {
 		total := p.calc.TotalDuration()
 		if total <= 0 {
 			return
 		}
 		wasRunning := p.started
-		progress := (px - barX) / barW
-		if progress < 0 {
-			progress = 0
-		}
-		if progress > 1 {
-			progress = 1
-		}
+		progress := progressFromCursorX(px, bar)
 		p.simState = p.calc.ComputeStateAtTime(total * progress)
 		p.started = wasRunning && !p.simState.Completed
 	}

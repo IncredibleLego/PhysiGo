@@ -2,12 +2,8 @@ package scenes
 
 import (
 	"fmt"
-	"image"
 	"image/color"
-	_ "image/jpeg"
-	_ "image/png"
 	"math"
-	"os"
 	"physiGo/config"
 	"physiGo/utils"
 
@@ -420,31 +416,12 @@ func (i *InclinedPlaneScene) Update() SceneId {
 }
 
 func (i *InclinedPlaneScene) handleKeyboardScrub() {
-	total := i.calc.TotalDuration()
-	if total <= 0 {
+	delta, ok := timelineScrubDelta(i.calc.TotalDuration())
+	if !ok {
 		return
 	}
-
-	step := total * 0.02
-	if step < 0.05 {
-		step = 0.05
-	}
-
-	advance := func(key ebiten.Key, delta float64) {
-		pressed := inpututil.IsKeyJustPressed(key)
-		dur := inpututil.KeyPressDuration(key)
-		if !pressed && dur > 10 && dur%3 == 0 {
-			pressed = true
-		}
-		if !pressed {
-			return
-		}
-		i.started = false
-		i.simState = i.calc.ComputeStateAtTime(i.simState.Time + delta)
-	}
-
-	advance(ebiten.KeyArrowRight, step)
-	advance(ebiten.KeyArrowLeft, -step)
+	i.started = false
+	i.simState = i.calc.ComputeStateAtTime(i.simState.Time + delta)
 }
 
 func (i *InclinedPlaneScene) refreshCalculus() {
@@ -502,97 +479,30 @@ func (i *InclinedPlaneScene) toggleRunState() {
 }
 
 func (i *InclinedPlaneScene) loadControlImages() {
-	load := func(path string) *ebiten.Image {
-		file, err := os.Open(path)
-		if err != nil {
-			return nil
-		}
-		defer file.Close()
-		img, _, err := image.Decode(file)
-		if err != nil {
-			return nil
-		}
-		return ebiten.NewImageFromImage(img)
-	}
-
-	i.playImage = load("img/play.png")
-	i.pauseImage = load("img/pause.png")
-	i.planeImage = load("img/plane.jpg")
-	i.blockImage = load("img/block.png")
-	i.barrelImage = load("img/barrel.png")
+	i.playImage = loadImage("img/play.png")
+	i.pauseImage = loadImage("img/pause.png")
+	i.planeImage = loadImage("img/plane.jpg")
+	i.blockImage = loadImage("img/block.png")
+	i.barrelImage = loadImage("img/barrel.png")
 	i.whiteImage = ebiten.NewImage(1, 1)
 	i.whiteImage.Fill(color.White)
 }
 
 func (i *InclinedPlaneScene) playButtonRect() (float64, float64, float64, float64) {
-	textDim := config.GlobalConfig.TextDimension
-	buttonSize := textDim * 1.25
-	barX := float64(config.GlobalConfig.ScreenWidth) * 0.2
-	barY := float64(config.GlobalConfig.ScreenHeight) - textDim*2.1
-	buttonX := barX - buttonSize - textDim*0.45
-	buttonY := barY - (buttonSize-textDim*0.5)/2
-	return buttonX, buttonY, buttonSize, buttonSize
+	button, _ := timelineRects()
+	return button.x, button.y, button.w, button.h
 }
 
 func (i *InclinedPlaneScene) progressBarRect() (float64, float64, float64, float64) {
-	textDim := config.GlobalConfig.TextDimension
-	barX := float64(config.GlobalConfig.ScreenWidth) * 0.2
-	barW := float64(config.GlobalConfig.ScreenWidth) * 0.6
-	barH := textDim * 0.45
-	barY := float64(config.GlobalConfig.ScreenHeight) - textDim*2.0
-	return barX, barY, barW, barH
+	_, bar := timelineRects()
+	return bar.x, bar.y, bar.w, bar.h
 }
 
 func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
-	btnX, btnY, btnW, btnH := i.playButtonRect()
-	barX, barY, barW, barH := i.progressBarRect()
-
-	vector.DrawFilledRect(screen, float32(btnX), float32(btnY), float32(btnW), float32(btnH), color.RGBA{40, 40, 40, 255}, false)
-
-	icon := i.playImage
-	if i.started && !i.simState.Completed {
-		icon = i.pauseImage
-	}
-
-	if icon != nil {
-		imgW, imgH := icon.Bounds().Dx(), icon.Bounds().Dy()
-		if imgW > 0 && imgH > 0 {
-			scale := math.Min(btnW*0.8/float64(imgW), btnH*0.8/float64(imgH))
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Scale(scale, scale)
-			drawW := float64(imgW) * scale
-			drawH := float64(imgH) * scale
-			op.GeoM.Translate(btnX+(btnW-drawW)/2, btnY+(btnH-drawH)/2)
-			screen.DrawImage(icon, op)
-		}
-	} else {
-		label := "PLAY"
-		if i.started && !i.simState.Completed {
-			label = "PAUSE"
-		}
-		x := btnX + btnW*0.12
-		y := btnY + btnH*0.68
-		utils.ScreenDraw(-(config.GlobalConfig.TextDimension / 2.2), x, y, "white", screen, label, "libertinus")
-	}
-
-	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW), float32(barH), color.RGBA{55, 55, 55, 255}, false)
-	progress := i.calc.SimProgress(i.simState.Time)
-	vector.DrawFilledRect(screen, float32(barX), float32(barY), float32(barW*progress), float32(barH), color.RGBA{30, 170, 90, 255}, false)
-
-	baseProgress := i.calc.BaseReachProgressFraction()
-	if baseProgress >= 0 {
-		baseX := barX + barW*baseProgress
-		vector.DrawFilledRect(screen, float32(baseX-2), float32(barY-3), 4, float32(barH+6), color.RGBA{240, 95, 40, 255}, false)
-	}
-
-	knobX := barX + barW*progress
-	if knobX < barX {
-		knobX = barX
-	}
-	if knobX > barX+barW {
-		knobX = barX + barW
-	}
-	vector.DrawFilledRect(screen, float32(knobX-2), float32(barY-4), 4, float32(barH+8), color.RGBA{230, 230, 230, 255}, false)
+	button, bar := timelineRects()
+	running := i.started && !i.simState.Completed
+	drawTimelineButton(screen, button, running, i.playImage, i.pauseImage, "PLAY")
+	drawTimelineBar(screen, bar, i.calc.SimProgress(i.simState.Time), i.calc.BaseReachProgressFraction())
 }
 
 func (i *InclinedPlaneScene) handleMouseControl() {
@@ -600,26 +510,19 @@ func (i *InclinedPlaneScene) handleMouseControl() {
 	px := float64(mx)
 	py := float64(my)
 
-	btnX, btnY, btnW, btnH := i.playButtonRect()
-	if px >= btnX && px <= btnX+btnW && py >= btnY && py <= btnY+btnH {
+	button, bar := timelineRects()
+	if button.contains(px, py) {
 		i.toggleRunState()
 		return
 	}
 
-	barX, barY, barW, barH := i.progressBarRect()
-	if px >= barX && px <= barX+barW && py >= barY && py <= barY+barH {
+	if bar.contains(px, py) {
 		total := i.calc.TotalDuration()
 		if total <= 0 {
 			return
 		}
 		wasRunning := i.started
-		progress := (px - barX) / barW
-		if progress < 0 {
-			progress = 0
-		}
-		if progress > 1 {
-			progress = 1
-		}
+		progress := progressFromCursorX(px, bar)
 		i.simState = i.calc.ComputeStateAtTime(total * progress)
 		i.started = wasRunning && !i.simState.Completed
 	}

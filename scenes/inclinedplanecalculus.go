@@ -105,14 +105,7 @@ func (c InclinedPlaneCalculus) SimProgress(t float64) float64 {
 	if total <= 0 {
 		return 0
 	}
-	p := t / total
-	if p < 0 {
-		return 0
-	}
-	if p > 1 {
-		return 1
-	}
-	return p
+	return clamp01(t / total)
 }
 
 // BaseReachProgressFraction returns the fraction of total time at which the block reaches the base,
@@ -125,14 +118,7 @@ func (c InclinedPlaneCalculus) BaseReachProgressFraction() float64 {
 	if total <= 0 {
 		return -1
 	}
-	p := c.TimeToBase / total
-	if p < 0 {
-		return 0
-	}
-	if p > 1 {
-		return 1
-	}
-	return p
+	return clamp01(c.TimeToBase / total)
 }
 
 // CurrentAcceleration returns the acceleration for the given simulation phase.

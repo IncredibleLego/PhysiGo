@@ -49,14 +49,7 @@ func (c ProjectileMotionCalculus) SimProgress(t float64) float64 {
 	if total <= 0 {
 		return 0
 	}
-	p := t / total
-	if p < 0 {
-		return 0
-	}
-	if p > 1 {
-		return 1
-	}
-	return p
+	return clamp01(t / total)
 }
 
 func (c ProjectileMotionCalculus) ComputeStateAtTime(t float64) ProjectileMotionSimState {

@@ -347,76 +347,42 @@ func (i *InclinedInputScene) rotateRotaryType(delta int) {
 }
 
 func (i *InclinedInputScene) currentFieldCount() int {
-	if i.objectMode == InclinedObjectRotary {
-		return 8
-	}
 	return 8
 }
 
 func (i *InclinedInputScene) renderInputValueBlock(value string, fieldIndex int) string {
-	if fieldIndex != i.activeField {
-		if value == "" {
-			return "-"
-		}
-		unit := ""
-		switch fieldIndex {
-		case 0:
-			unit = " kg"
-		case 1:
-			unit = "°"
-		case 2:
-			unit = " m"
-		case 3:
-			unit = " m"
-		case 6:
-			unit = " m/s"
-		case 7:
-			unit = " m/s^2"
-		}
-		return value + unit
+	units := map[int]string{
+		0: " kg",
+		1: "°",
+		2: " m",
+		3: " m",
+		6: " m/s",
+		7: " m/s^2",
 	}
-	return i.renderBlinking(value)
+	return i.renderInputValueWithUnits(value, fieldIndex, units)
 }
 
 func (i *InclinedInputScene) renderInputValueRotary(value string, fieldIndex int) string {
+	units := map[int]string{
+		0: " kg",
+		1: " m",
+		2: "°",
+		3: " m",
+		4: " m",
+		6: " m/s",
+		7: " m/s^2",
+	}
+	return i.renderInputValueWithUnits(value, fieldIndex, units)
+}
+
+func (i *InclinedInputScene) renderInputValueWithUnits(value string, fieldIndex int, units map[int]string) string {
 	if fieldIndex != i.activeField {
 		if value == "" {
 			return "-"
 		}
-		unit := ""
-		switch fieldIndex {
-		case 0:
-			unit = " kg"
-		case 1:
-			unit = " m"
-		case 2:
-			unit = "°"
-		case 3:
-			unit = " m"
-		case 4:
-			unit = " m"
-		case 6:
-			unit = " m/s"
-		case 7:
-			unit = " m/s^2"
-		}
-		return value + unit
+		return value + units[fieldIndex]
 	}
-	return i.renderBlinking(value)
-}
-
-func (i *InclinedInputScene) renderBlinking(value string) string {
-	blinkOn := time.Since(i.lastBlink) < time.Second
-	if time.Since(i.lastBlink) > time.Second*2 {
-		i.lastBlink = time.Now()
-	}
-	if blinkOn {
-		return value + "_"
-	}
-	if value == "" {
-		return "-"
-	}
-	return value
+	return renderBlinkingValue(&i.lastBlink, value)
 }
 
 func (i *InclinedInputScene) handleActiveFieldInput() {
@@ -463,29 +429,7 @@ func (i *InclinedInputScene) handleActiveFieldInput() {
 }
 
 func (i *InclinedInputScene) handleNumericInput(input *string) {
-	text := *input
-	maxChars := 8
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(text) > 0 {
-		text = text[:len(text)-1]
-	}
-
-	for key := ebiten.Key0; key <= ebiten.Key9; key++ {
-		if inpututil.IsKeyJustPressed(key) && len(text) < maxChars {
-			text += string('0' + rune(key-ebiten.Key0))
-		}
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) || inpututil.IsKeyJustPressed(ebiten.KeyComma) {
-		if !strings.ContainsAny(text, ".,") && len(text) < maxChars {
-			if text == "" {
-				text = "0"
-			}
-			text += "."
-		}
-	}
-
-	*input = text
+	handleNumericTextInput(input, 8)
 }
 
 func (i *InclinedInputScene) tryConfirmActiveField() bool {

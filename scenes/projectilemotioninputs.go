@@ -4,7 +4,6 @@ import (
 	"math"
 	"physiGo/config"
 	"physiGo/utils"
-	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -142,17 +141,7 @@ func (p *ProjectileMotionInputScene) renderInputValue(value string, fieldIndex i
 
 func (p *ProjectileMotionInputScene) renderBlinking(value string) string {
 	// Cursore testuale semplice: alterna "_" per evidenziare il campo in modifica.
-	blinkOn := time.Since(p.lastBlink) < time.Second
-	if time.Since(p.lastBlink) > time.Second*2 {
-		p.lastBlink = time.Now()
-	}
-	if blinkOn {
-		return value + "_"
-	}
-	if value == "" {
-		return "-"
-	}
-	return value
+	return renderBlinkingValue(&p.lastBlink, value)
 }
 
 func (p *ProjectileMotionInputScene) handleActiveFieldInput() {
@@ -175,29 +164,7 @@ func (p *ProjectileMotionInputScene) handleActiveFieldInput() {
 
 func (p *ProjectileMotionInputScene) handleNumericInput(input *string) {
 	// Parser minimale da tastiera: cifre, un separatore decimale e backspace.
-	text := *input
-	maxChars := 8
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(text) > 0 {
-		text = text[:len(text)-1]
-	}
-
-	for key := ebiten.Key0; key <= ebiten.Key9; key++ {
-		if inpututil.IsKeyJustPressed(key) && len(text) < maxChars {
-			text += string('0' + rune(key-ebiten.Key0))
-		}
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) || inpututil.IsKeyJustPressed(ebiten.KeyComma) {
-		if !strings.ContainsAny(text, ".,") && len(text) < maxChars {
-			if text == "" {
-				text = "0"
-			}
-			text += "."
-		}
-	}
-
-	*input = text
+	handleNumericTextInput(input, 8)
 }
 
 func (p *ProjectileMotionInputScene) tryConfirmActiveField() bool {

@@ -15,6 +15,7 @@ type StartScene struct { // is the scene loaded now
 	currentMenu        *menu.RegularMenu
 	mainMenu           *menu.RegularMenu
 	playMenu           *menu.RegularMenu
+	gopongMenu         *menu.RegularMenu
 	exitPopup          *utils.Popup
 	lastEnterPressTime time.Time
 	actionExecuted     bool
@@ -30,6 +31,7 @@ func NewStartScene() *StartScene {
 		currentMenu: nil,
 		mainMenu:    nil,
 		playMenu:    nil,
+		gopongMenu:  nil,
 	}
 }
 
@@ -62,6 +64,15 @@ func (s *StartScene) FirstLoad() {
 		Options: []menu.MenuOption{
 			{Label: "INCLINED PLANE"},
 			{Label: "PROJECTILE MOTION"},
+			{Label: "GOPONG"},
+			{Label: "BACK"},
+		},
+		Selected:     0,
+		LastMoveTime: time.Now(),
+		Offset:       (float64(config.GlobalConfig.ScreenHeight) * 0.20833),
+	}
+	s.gopongMenu = &menu.RegularMenu{
+		Options: []menu.MenuOption{
 			{Label: "SOLO MODE"},
 			{Label: "COMPUTER MODE"},
 			{Label: "MULTIPLAYER MODE"},
@@ -160,6 +171,9 @@ func (s *StartScene) handleMenuSelection() SceneId {
 		return InclinedInputSceneId
 	case "PROJECTILE MOTION":
 		return ProjectileMotionInputSceneId
+	case "GOPONG":
+		s.currentMenu = s.gopongMenu
+		s.gopongMenu.Selected = 0
 	case "SOLO MODE":
 		s.selectedMode = 1
 		return NameInputSceneId
@@ -170,7 +184,12 @@ func (s *StartScene) handleMenuSelection() SceneId {
 		s.selectedMode = 2
 		return NameInputSceneId
 	case "BACK":
-		s.currentMenu = s.mainMenu
+		if s.currentMenu == s.gopongMenu {
+			s.currentMenu = s.playMenu
+			s.playMenu.Selected = 2
+		} else {
+			s.currentMenu = s.mainMenu
+		}
 	}
 	return StartSceneId
 }

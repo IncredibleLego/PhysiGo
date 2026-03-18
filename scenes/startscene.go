@@ -61,6 +61,7 @@ func (s *StartScene) FirstLoad() {
 	s.playMenu = &menu.RegularMenu{
 		Options: []menu.MenuOption{
 			{Label: "INCLINED PLANE"},
+			{Label: "PROJECTILE MOTION"},
 			{Label: "SOLO MODE"},
 			{Label: "COMPUTER MODE"},
 			{Label: "MULTIPLAYER MODE"},
@@ -157,6 +158,8 @@ func (s *StartScene) handleMenuSelection() SceneId {
 		s.exitPopup.Selected = 0
 	case "INCLINED PLANE":
 		return InclinedInputSceneId
+	case "PROJECTILE MOTION":
+		return ProjectileMotionInputSceneId
 	case "SOLO MODE":
 		s.selectedMode = 1
 		return NameInputSceneId

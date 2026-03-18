@@ -18,6 +18,8 @@ const (
 	HighScoresSceneId
 	InclinedInputSceneId
 	InclinedPlaneSceneId
+	ProjectileMotionInputSceneId
+	ProjectileMotionSceneId
 )
 
 type Scene interface {

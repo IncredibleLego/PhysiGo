@@ -17,16 +17,18 @@ type Game struct {
 
 func NewGame() *Game {
 	sceneMap := map[scenes.SceneId]scenes.Scene{
-		scenes.GameSceneId:          scenes.NewGameScene(),
-		scenes.StartSceneId:         scenes.NewStartScene(),
-		scenes.PauseSceneId:         nil,
-		scenes.ComputerSceneId:      scenes.NewComputerScene(),
-		scenes.MultiplayerSceneId:   scenes.NewMultiplayerScene(),
-		scenes.OptionsSceneId:       nil,
-		scenes.NameInputSceneId:     nil,
-		scenes.HighScoresSceneId:    nil,
-		scenes.InclinedInputSceneId: nil,
-		scenes.InclinedPlaneSceneId: scenes.NewInclinedPlaneScene(),
+		scenes.GameSceneId:                  scenes.NewGameScene(),
+		scenes.StartSceneId:                 scenes.NewStartScene(),
+		scenes.PauseSceneId:                 nil,
+		scenes.ComputerSceneId:              scenes.NewComputerScene(),
+		scenes.MultiplayerSceneId:           scenes.NewMultiplayerScene(),
+		scenes.OptionsSceneId:               nil,
+		scenes.NameInputSceneId:             nil,
+		scenes.HighScoresSceneId:            nil,
+		scenes.InclinedInputSceneId:         nil,
+		scenes.InclinedPlaneSceneId:         scenes.NewInclinedPlaneScene(),
+		scenes.ProjectileMotionInputSceneId: nil,
+		scenes.ProjectileMotionSceneId:      scenes.NewProjectileMotionScene(),
 	}
 	activeSceneId := scenes.StartSceneId
 	sceneMap[activeSceneId].FirstLoad()
@@ -82,6 +84,9 @@ func (g *Game) Update() error {
 			reason = scenes.Other
 		} else if nextSceneId == scenes.InclinedInputSceneId {
 			g.sceneMap[scenes.InclinedInputSceneId] = scenes.NewInclinedInputScene()
+			reason = scenes.Other
+		} else if nextSceneId == scenes.ProjectileMotionInputSceneId {
+			g.sceneMap[scenes.ProjectileMotionInputSceneId] = scenes.NewProjectileMotionInputScene()
 			reason = scenes.Other
 		} else if nextSceneId == scenes.HighScoresSceneId {
 			// If the next scene is the high scores scene, it is created and the reason is set to "other"

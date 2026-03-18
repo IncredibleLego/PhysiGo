@@ -36,6 +36,18 @@ type Config struct {
 	InclinedNetForce        float64
 	InclinedAcceleration    float64
 	InclinedSlides          bool
+	ProjectileV0            float64
+	ProjectileTheta         float64
+	ProjectileH             float64
+	ProjectileRange         float64
+	ProjectileTime          float64
+	ProjectileGravity       float64
+	ProjectileV0Set         bool
+	ProjectileThetaSet      bool
+	ProjectileHSet          bool
+	ProjectileRangeSet      bool
+	ProjectileTimeSet       bool
+	ProjectileGravitySet    bool
 	BallSpeed               int
 	BallSize                int
 	PaddleSpeed             int
@@ -81,6 +93,18 @@ var GlobalConfig = &Config{
 	InclinedNetForce:        0,
 	InclinedAcceleration:    0,
 	InclinedSlides:          false,
+	ProjectileV0:            0,
+	ProjectileTheta:         0,
+	ProjectileH:             0,
+	ProjectileRange:         0,
+	ProjectileTime:          0,
+	ProjectileGravity:       9.8,
+	ProjectileV0Set:         false,
+	ProjectileThetaSet:      false,
+	ProjectileHSet:          false,
+	ProjectileRangeSet:      false,
+	ProjectileTimeSet:       false,
+	ProjectileGravitySet:    false,
 	BallSpeed:               9,
 	BallSize:                22,
 	PaddleSpeed:             9,
@@ -126,6 +150,18 @@ var DefaultConfig = &Config{
 	InclinedNetForce:        0,
 	InclinedAcceleration:    0,
 	InclinedSlides:          false,
+	ProjectileV0:            0,
+	ProjectileTheta:         0,
+	ProjectileH:             0,
+	ProjectileRange:         0,
+	ProjectileTime:          0,
+	ProjectileGravity:       9.8,
+	ProjectileV0Set:         false,
+	ProjectileThetaSet:      false,
+	ProjectileHSet:          false,
+	ProjectileRangeSet:      false,
+	ProjectileTimeSet:       false,
+	ProjectileGravitySet:    false,
 	BallSpeed:               9,
 	BallSize:                22,
 	PaddleSpeed:             9,

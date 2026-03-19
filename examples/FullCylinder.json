@@ -1,0 +1,11 @@
+{
+  "body": 5,
+  "mass": 2,
+  "radius": 0.05,
+  "angle": 20,
+  "length": 2.92,
+  "height": 1,
+  "rotational_coeff": 0.05,
+  "v0": 0,
+  "gravity": 9.8
+}

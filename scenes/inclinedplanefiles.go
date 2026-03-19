@@ -243,11 +243,11 @@ func parseInclinedRotaryPayload(payload map[string]interface{}) (*inclinedImport
 		return nil, err
 	}
 
-	bodyStr, err := readStringField(payload, "body")
-	if err != nil {
-		return nil, err
+	bodyValue, ok := payload["body"]
+	if !ok {
+		return nil, errors.New("campo mancante: body")
 	}
-	body, err := parseRotaryBodyType(bodyStr)
+	body, err := parseRotaryBodyType(bodyValue)
 	if err != nil {
 		return nil, err
 	}
@@ -385,24 +385,28 @@ func validateInclinedCommonValues(mass, angle, length, height, v0, gravity float
 	return nil
 }
 
-func parseRotaryBodyType(input string) (InclinedRotaryType, error) {
-	normalized := strings.ToLower(strings.TrimSpace(input))
-	normalized = strings.ReplaceAll(normalized, " ", "_")
-	normalized = strings.ReplaceAll(normalized, "-", "_")
+func parseRotaryBodyType(value interface{}) (InclinedRotaryType, error) {
+	number, ok := value.(float64)
+	if !ok || math.IsNaN(number) || math.IsInf(number, 0) {
+		return "", errors.New("body deve essere un intero tra 1 e 5")
+	}
+	if math.Trunc(number) != number {
+		return "", errors.New("body deve essere un intero tra 1 e 5")
+	}
 
-	switch normalized {
-	case "disco", "disk":
-		return RotaryDisk, nil
-	case "anello", "ring":
+	switch int(number) {
+	case 1:
 		return RotaryRing, nil
-	case "sfera", "sphere":
+	case 2:
+		return RotaryDisk, nil
+	case 3:
 		return RotarySphere, nil
-	case "cilindro_vuoto", "hollow_cylinder":
+	case 4:
 		return RotaryHollowCylinder, nil
-	case "cilindro_pieno", "solid_cylinder":
+	case 5:
 		return RotarySolidCylinder, nil
 	default:
-		return "", errors.New("body non valido: usa disco, anello, sfera, cilindro_vuoto o cilindro_pieno")
+		return "", errors.New("body non valido: usa 1=anello, 2=disco, 3=sfera, 4=cilindro_vuoto, 5=cilindro_pieno")
 	}
 }
 

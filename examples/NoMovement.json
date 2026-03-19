@@ -1,0 +1,10 @@
+{
+  "mass": 100,
+  "angle": 15,
+  "length": 3.86,
+  "height": 1,
+  "static_coeff": 0.4,
+  "dynamic_coeff": 0.2,
+  "v0": 0,
+  "gravity": 9.8
+}

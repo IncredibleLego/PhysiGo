@@ -1,6 +1,6 @@
 package scenes
 
-// InclinedObjectMode identifies the body category used on the inclined plane.
+// InclinedObjectMode identifica la categoria di corpo usata sul piano inclinato.
 type InclinedObjectMode string
 
 const (
@@ -8,7 +8,7 @@ const (
 	InclinedObjectRotary InclinedObjectMode = "rotary"
 )
 
-// InclinedRotaryType identifies the rotating rigid body model.
+// InclinedRotaryType identifica il modello di corpo rigido rotatorio.
 type InclinedRotaryType string
 
 const (
@@ -57,7 +57,7 @@ func rotaryInertiaFormula(kind InclinedRotaryType) string {
 	}
 }
 
-// rotaryInertiaFactor returns k in I = k*m*r^2.
+// rotaryInertiaFactor restituisce il coefficiente k nella formula I = k*m*r^2.
 func rotaryInertiaFactor(kind InclinedRotaryType) float64 {
 	switch kind {
 	case RotaryRing, RotaryHollowCylinder:

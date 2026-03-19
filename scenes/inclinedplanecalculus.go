@@ -5,9 +5,9 @@ import (
 	"physiGo/config"
 )
 
-// InclinedPlaneCalculus holds all pre-computed physics values for the inclined plane.
+// InclinedPlaneCalculus contiene tutti i parametri pre-calcolati per la simulazione del piano inclinato, derivati dalla configurazione di input
 type InclinedPlaneCalculus struct {
-	// Input geometry and body model
+	// Geometria di input e modello del corpo
 	Theta         float64
 	InitialHeight float64
 	ObjectMode    InclinedObjectMode
@@ -15,7 +15,7 @@ type InclinedPlaneCalculus struct {
 	Radius        float64
 	MuR           float64
 
-	// Forces
+	// Forze
 	WeightParallel     float64
 	WeightPerp         float64
 	Normal             float64
@@ -26,11 +26,11 @@ type InclinedPlaneCalculus struct {
 	Acceleration       float64
 	Slides             bool
 
-	// Rotational model (I = k*m*r^2)
+	// Modello rotazionale (I = k*m*r^2)
 	RotaryInertiaFactor float64
 	MomentOfInertia     float64
 
-	// Kinematics on incline
+	// Cinematica sul piano inclinato
 	DistanceToBase        float64
 	VelocityAtBase        float64
 	TimeToBase            float64
@@ -38,12 +38,12 @@ type InclinedPlaneCalculus struct {
 	StopsOnIncline        bool
 	StopDistanceOnIncline float64
 
-	// Kinematics on ground after base
+	// Cinematica sul terreno dopo la base
 	HorizontalDecel    float64
 	HorizontalStopDist float64
 	HorizontalStopTime float64
 
-	// Energy reference
+	// Riferimento energetico
 	Mass                   float64
 	Gravity                float64
 	InitialKineticTrans    float64
@@ -51,21 +51,21 @@ type InclinedPlaneCalculus struct {
 	InitialMechanicalTotal float64
 }
 
-// InclinedPlaneSimState is the full kinematic state of the simulation at a given instant.
+// InclinedPlaneSimState rappresenta lo stato cinematico completo della simulazione in un istante dato.
 type InclinedPlaneSimState struct {
 	Time     float64
-	S        float64 // distance traveled along the incline
-	HorizS   float64 // distance traveled on the horizontal ground
+	S        float64 // distanza percorsa lungo il piano inclinato
+	HorizS   float64 // distanza percorsa sul terreno orizzontale
 	Velocity float64
-	HBlock   float64 // current block height
+	HBlock   float64 // altezza corrente del blocco
 	Phase    string  // "ready", "incline", "horizontal", "stopped"
 
-	// Rotational dynamics
+	// Dinamica rotazionale
 	AngularVelocity     float64
 	AngularAcceleration float64
 	RotationAngle       float64
 
-	// Energies and work
+	// Energie e lavoro
 	KineticTranslational float64
 	KineticRotational    float64
 	PotentialEnergy      float64
@@ -84,8 +84,10 @@ type InclinedPlaneSimState struct {
 	Completed bool
 }
 
-// TotalDuration returns the total simulated time for the full motion (incline + optional ground stop).
-// Returns 0 when the block does not slide.
+// TotalDuration restituisce il tempo totale della simulazione (piano inclinato + fase orizzontale). Restituisce 0 se il corpo non scivola. Tiene conto di:
+// - Arresto sul piano inclinato
+// - Movimento orizzontale con attrito fino allo stop
+// - Movimento orizzontale senza attrito (infinito)
 func (c InclinedPlaneCalculus) TotalDuration() float64 {
 	if !c.Slides {
 		return 0
@@ -99,7 +101,7 @@ func (c InclinedPlaneCalculus) TotalDuration() float64 {
 	return c.TimeToBase
 }
 
-// SimProgress returns the simulation progress in [0,1] for the given time.
+// SimProgress restituisce il progresso della simulazione in [0,1] normalizzato al tempo totale. Usato per aggiornare la progress bar visuale.
 func (c InclinedPlaneCalculus) SimProgress(t float64) float64 {
 	total := c.TotalDuration()
 	if total <= 0 {
@@ -108,8 +110,8 @@ func (c InclinedPlaneCalculus) SimProgress(t float64) float64 {
 	return clamp01(t / total)
 }
 
-// BaseReachProgressFraction returns the fraction of total time at which the block reaches the base,
-// or -1 if not applicable.
+// BaseReachProgressFraction restituisce la frazione di tempo totale al quale il corpo raggiunge la base del piano inclinato.
+// Restituisce -1 se non applicabile (es. se il corpo non scivola o si ferma sul piano).
 func (c InclinedPlaneCalculus) BaseReachProgressFraction() float64 {
 	if !c.Slides || c.StopsOnIncline || c.TimeToBase <= 0 {
 		return -1
@@ -121,7 +123,10 @@ func (c InclinedPlaneCalculus) BaseReachProgressFraction() float64 {
 	return clamp01(c.TimeToBase / total)
 }
 
-// CurrentAcceleration returns the acceleration for the given simulation phase.
+// CurrentAcceleration restituisce l'accelerazione lineare associata alla fase simulativa corrente:
+// - "incline"/"ready": accelerazione sul piano inclinato (positiva se scivola)
+// - "horizontal": decelerazione (negativa) dovuta all'attrito orizzontale
+// - "stopped": zero (corpo fermo)
 func (c InclinedPlaneCalculus) CurrentAcceleration(phase string) float64 {
 	if !c.Slides {
 		return 0
@@ -139,6 +144,9 @@ func (c InclinedPlaneCalculus) CurrentAcceleration(phase string) float64 {
 	}
 }
 
+// CurrentAngularAcceleration restituisce l'accelerazione angolare per il corpo rotatorio.
+// È calcolata come accelerazione lineare divisa per il raggio: α = a / r.
+// Ritorna 0 se il corpo non è rotatorio o se il raggio non è valido.
 func (c InclinedPlaneCalculus) CurrentAngularAcceleration(phase string) float64 {
 	if c.ObjectMode != InclinedObjectRotary || c.Radius <= 0 {
 		return 0
@@ -150,7 +158,9 @@ func (c InclinedPlaneCalculus) CurrentAngularAcceleration(phase string) float64 
 	return a / c.Radius
 }
 
-// DistanceFromBase returns the remaining distance to the incline base for the given simulation state.
+// DistanceFromBase restituisce la distanza rimanente fino alla base del piano inclinato.
+// Calcolata come DistanceToBase - s (distanza percorsa).
+// Restituisce 0 se il corpo è già sulla fase orizzontale o se ha superato la base.
 func (c InclinedPlaneCalculus) DistanceFromBase(s float64, phase string) float64 {
 	if phase == "incline" || phase == "ready" {
 		d := c.DistanceToBase - s
@@ -162,11 +172,16 @@ func (c InclinedPlaneCalculus) DistanceFromBase(s float64, phase string) float64
 	return 0
 }
 
-// ComputeStateAtTime computes the full kinematic state at time t, purely from the pre-calculated values.
+// ComputeStateAtTime calcola lo stato cinematico completo al tempo t utilizzando i valori pre-calcolati.
+// Gestisce tre fasi:
+// 1. READY -> INCLINE: corpo su piano inclinato, accelerazione costante
+// 2. INCLINE -> HORIZONTAL: corpo raggiunge base, passa a movimento orizzontale
+// 3. HORIZONTAL -> STOPPED: corpo si ferma per attrito (se HorizontalDecel > 0)
+// Implementa protezione floating-point con tolleranza stopEpsilon per evitare residui numerici vicino al punto di arresto analitico.
 func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimState {
 	h0 := c.InitialHeight
 
-	// Body does not slide: always at rest.
+	// CASO: corpo non scivola -> resta sempre fermo al tempo t=0
 	if !c.Slides {
 		state := InclinedPlaneSimState{
 			Time:     0,
@@ -181,7 +196,7 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 		t = 0
 	}
 
-	// Clamp to end when a finite stop exists.
+	// Limita il tempo all'istante di arresto quando esiste un stop finito.
 	total := c.TotalDuration()
 	if total > 0 && c.HorizontalDecel > 0 && t > total {
 		t = total
@@ -204,7 +219,7 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 
 	inclineTime := c.TimeToBase
 
-	// Body stops on the incline.
+	// FASE 1: corpo si ferma sul piano inclinato prima di raggiunga la base.
 	if c.StopsOnIncline {
 		tInc := t
 		if tInc > inclineTime {
@@ -236,7 +251,7 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 		return c.withEnergyAndRotation(state)
 	}
 
-	// Still on the incline.
+	// FASE 2: corpo è ancora sul piano inclinato (non ha raggiunto la base).
 	if t < inclineTime {
 		state.Phase = "incline"
 		state.S = v0*t + 0.5*a*t*t
@@ -255,7 +270,7 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 		return c.withEnergyAndRotation(state)
 	}
 
-	// On the horizontal ground.
+	// FASE 3: corpo ha raggiunto la base del piano e è su terreno orizzontale.
 	state.Phase = "horizontal"
 	state.S = c.DistanceToBase
 	state.HBlock = 0
@@ -269,22 +284,27 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 		horizontalT = 0
 	}
 
+	// Sottofase 3a: nessun attrito orizzontale -> moto uniforme infinito
 	if c.HorizontalDecel <= 0 {
 		state.HorizS = c.VelocityAtBase * horizontalT
 		state.Velocity = c.VelocityAtBase
 		return c.withEnergyAndRotation(state)
 	}
 
+	// Sottofase 3b: attrito orizzontale presente -> decelerazione fino allo stop
 	vBase := c.VelocityAtBase
 	decel := c.HorizontalDecel
 	state.HorizS = vBase*horizontalT - 0.5*decel*horizontalT*horizontalT
 	state.Velocity = vBase - decel*horizontalT
 
-	// Protect stop detection from floating-point residue near the analytical stop point.
+	// Protezione da residui floating-point vicino al punto di arresto analitico.
+	// Usa una tolleranza piccola (stopEpsilon) per evitare che v ~= epsilon impedisca
+	// il riconoscimento della condizione SimulationEnded.
 	const stopEpsilon = 1e-9
 	if state.Velocity <= 0 {
 		state.Velocity = 0
 	}
+	// Rileva arresto: se velocità <= epsilon OR tempo >= tempo_stop_teorico - epsilon
 	reachedStopByVelocity := state.Velocity <= stopEpsilon
 	reachedStopByTime := horizontalT >= c.HorizontalStopTime-stopEpsilon
 	if reachedStopByVelocity || reachedStopByTime {
@@ -300,7 +320,15 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 	return c.withEnergyAndRotation(state)
 }
 
+// withEnergyAndRotation arricchisce lo stato cinematico calcolando:
+// - velocità angolare e acoelerazione (se corpo rotatorio)
+// - angolo di rotazione accumulato
+// - energie cinetiche translazionale e rotazionale
+// - energia potenziale gravitazionale
+// - lavoro totale (differenza di energia cinetica)
 func (c InclinedPlaneCalculus) withEnergyAndRotation(state InclinedPlaneSimState) InclinedPlaneSimState {
+	// Calcolo dinamica rotazionale solo per corpi rotatori (cilindri, sfere, etc.)
+	// ω = v / r, α = a / r, θ_rot = s_totale / r
 	if c.ObjectMode == InclinedObjectRotary && c.Radius > 0 {
 		state.AngularVelocity = state.Velocity / c.Radius
 		state.AngularAcceleration = c.CurrentAngularAcceleration(state.Phase)
@@ -311,6 +339,11 @@ func (c InclinedPlaneCalculus) withEnergyAndRotation(state InclinedPlaneSimState
 		state.RotationAngle = 0
 	}
 
+	// Calcolo energetiche:
+	// K_trans = (1/2) * m * v^2
+	// K_rot = (1/2) * I * ω^2
+	// U = m * g * h
+	// W_totale = ΔK_trans + ΔK_rot (differenza da stato iniziale)
 	state.KineticTranslational = 0.5 * c.Mass * state.Velocity * state.Velocity
 	state.KineticRotational = 0.5 * c.MomentOfInertia * state.AngularVelocity * state.AngularVelocity
 	state.PotentialEnergy = c.Mass * c.Gravity * state.HBlock
@@ -319,7 +352,18 @@ func (c InclinedPlaneCalculus) withEnergyAndRotation(state InclinedPlaneSimState
 	return state
 }
 
+// ComputeInclinedPlaneCalculus è il motore di calcolo principale della fisica del piano inclinato.
+// Calcola TUTTI i parametri derivati una sola volta (pre-calculated) da usare poi nelle
+// simulazioni. È diviso in blocchi logici:
+// 1. Geometria e conversioni angolari
+// 2. Calcolo forze base (peso, normale, attrito)
+// 3. Logica slides (scivola o no?)
+// 4. Dinamica sul piano inclinato (caso block vs rotario)
+// 5. Cinematica: tempo e velocità al raggiungimento della base
+// 6. Cinematica orizzontale: decelerazione e stop
+// 7. Energie iniziali
 func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
+	// BLOCCO 1: Conversioni geometriche e configurazione tipo corpo
 	thetaRad := cfg.InclinedTheta * math.Pi / 180.0
 	sinTheta := math.Sin(thetaRad)
 	cosTheta := math.Cos(thetaRad)
@@ -335,6 +379,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		radius = 0
 	}
 
+	// BLOCCO 2: Calcolo forze elementari su piano inclinato
 	weightParallel := mg * sinTheta
 	weightPerp := mg * cosTheta
 	normal := weightPerp
@@ -362,12 +407,15 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		}
 	}
 
+	// BLOCCO 3: Logica "scivola o no?" e dinamica sul piano inclinato
+
+	// SOTTOBLOCCO 3a: Corpo ROTATORIO (sfera, cilindro, disco)
 	if isRotary {
 		inertiaFactor = rotaryInertiaFactor(rotaryType)
 		momentOfInertia = inertiaFactor * cfg.InclinedMass * radius * radius
 
-		// On the incline use the pure rolling model (no dissipative rolling-friction loss).
-		// F_v = mu_r*N is applied on the horizontal phase to brake the body.
+		// Sul piano inclinato usa il modello di pura rotolazione, senza dissipazione da attrito volvente.
+		// L'attrito di rotolamento μ_r è applicato solo sulla fase orizzontale per frenare.
 		dynamicFriction = 0
 		availableForce := weightParallel
 
@@ -378,6 +426,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		}
 
 		if slides {
+			// Accelerazione con rotazione: a = F_net / (m*(1 + I/(m*r^2)))
 			den := cfg.InclinedMass * (1.0 + inertiaFactor)
 			if den > 0 {
 				accel = availableForce / den
@@ -390,6 +439,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		staticFrictionMax = 0
 		staticFrictionReal = 0
 	} else {
+		// SOTTOBLOCCO 3b: Corpo BLOCK (obj rigido senza rotazione)
 		if cfg.InclinedInitialVelocity > 0 {
 			slides = true
 		} else if cfg.InclinedMuSSet {
@@ -411,6 +461,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		}
 	}
 
+	// BLOCCO 4: Distanza sul piano inclinato (derivata da altezza iniziale)
 	distanceToBase := cfg.InclinedLength
 	if cfg.InclinedHBlock > 0 && sinTheta > 0 {
 		distanceToBase = cfg.InclinedHBlock / sinTheta
@@ -421,6 +472,8 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		initialHeight = cfg.InclinedHBlock
 	}
 
+	// BLOCCO 5: Cinematica sul piano inclinato
+	// Usa formule di moto uniformemente accelerato: v^2 = v0^2 + 2*a*s, v = v0 + a*t
 	v0 := cfg.InclinedInitialVelocity
 	if v0 < 0 {
 		v0 = 0
@@ -431,24 +484,32 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 	stopsOnIncline := false
 	stopDistanceOnIncline := 0.0
 	if slides && distanceToBase > 0 {
+		// Calcolo velocità al raggiungimento della base usando v^2 = v0^2 + 2*a*s
 		v2 := v0*v0 + 2*accel*distanceToBase
 		if v2 > 0 {
 			velocityAtBase = math.Sqrt(v2)
 		}
 
+		// Logica tempo: controlla casi a=0, a>0, a<0
 		if math.Abs(accel) < 1e-9 {
+			// Accelerazione quasi nulla: moto uniforme
 			if v0 > 0 {
 				timeToBase = distanceToBase / v0
 			}
 		} else if accel > 0 {
+			// Accelerazione positiva: corpo accelera
 			timeToBase = (velocityAtBase - v0) / accel
 		} else {
+			// Accelerazione negativa: corpo decelera e potrebbe fermarsi sul piano
+			// Distanza di arresto con decel: s_stop = v0^2 / (2*|a|)
 			stopDistanceOnIncline = (v0 * v0) / (2 * -accel)
 			if stopDistanceOnIncline < distanceToBase {
+				// Si ferma prima della base
 				stopsOnIncline = true
 				velocityAtBase = 0
 				timeToBase = v0 / -accel
 			} else {
+				// Raggiunge la base ancora in movimento
 				timeToBase = (velocityAtBase - v0) / accel
 				if timeToBase < 0 {
 					timeToBase = 0
@@ -457,16 +518,19 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		}
 	}
 
+	// BLOCCO 6: Cinematica fase orizzontale (attrito sul terreno piano)
 	horizontalDecel := 0.0
 	horizontalStopDist := 0.0
 	horizontalStopTime := 0.0
 	if isRotary {
+		// Corpo rotatorio: decelerazione = μ_r * g
 		horizontalDecel = muR * cfg.InclinedGravity
 		if horizontalDecel > 0 && velocityAtBase > 0 && !stopsOnIncline {
 			horizontalStopDist = (velocityAtBase * velocityAtBase) / (2 * horizontalDecel)
 			horizontalStopTime = velocityAtBase / horizontalDecel
 		}
 	} else if cfg.InclinedMuKSet {
+		// Block: decelerazione = μ_k * g
 		horizontalDecel = cfg.InclinedMuK * cfg.InclinedGravity
 		if horizontalDecel > 0 && velocityAtBase > 0 && !stopsOnIncline {
 			horizontalStopDist = (velocityAtBase * velocityAtBase) / (2 * horizontalDecel)
@@ -474,6 +538,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		}
 	}
 
+	// BLOCCO 7: Energie iniziali (per calcolo lavoro dinamico)
 	initialOmega := 0.0
 	if isRotary && radius > 0 {
 		initialOmega = v0 / radius
@@ -517,6 +582,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 	}
 }
 
+// UpdateInclinedPlaneCalculus ricalcola il modello fisico e sincronizza i risultati nella configurazione globale per la UI. Usato quando l'utente modifica parametri.
 func UpdateInclinedPlaneCalculus() error {
 	calc := ComputeInclinedPlaneCalculus(config.GlobalConfig)
 	return config.UpdateConfig(func(cfg *config.Config) {

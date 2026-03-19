@@ -42,6 +42,8 @@ type inclinedImportedRotaryProblem struct {
 	Gravity         float64
 }
 
+// inclinedImportButtonRect calcola posizione e dimensioni del pulsante
+// "IMPORTA DA FILE" in base alla risoluzione corrente.
 func inclinedImportButtonRect() uiRect {
 	sw := float64(config.GlobalConfig.ScreenWidth)
 	sh := float64(config.GlobalConfig.ScreenHeight)
@@ -55,6 +57,7 @@ func inclinedImportButtonRect() uiRect {
 	return uiRect{x: x, y: y, w: buttonW, h: buttonH}
 }
 
+// drawInclinedImportButton disegna il pulsante di import con colore diverso quando il mouse e in hover.
 func drawInclinedImportButton(screen *ebiten.Image, hovered bool) {
 	rect := inclinedImportButtonRect()
 	fillColor := color.RGBA{34, 74, 114, 255}
@@ -71,6 +74,9 @@ func drawInclinedImportButton(screen *ebiten.Image, hovered bool) {
 	utils.ScreenDraw(labelSize-config.GlobalConfig.TextDimension, labelX, labelY, "white", screen, label, "libertinus")
 }
 
+// importInclinedPlaneProblemFromFile gestisce tutto il flusso di importazione:
+// selezione file, lettura JSON, riconoscimento tipo problema e applicazione
+// dei valori nella configurazione globale.
 func importInclinedPlaneProblemFromFile() error {
 	path, err := pickInclinedJSONFile()
 	if err != nil {
@@ -108,6 +114,8 @@ func importInclinedPlaneProblemFromFile() error {
 	return nil
 }
 
+// pickInclinedJSONFile apre un file-picker (zenity) e restituisce il path scelto.
+// Distingue annullamento utente, comando mancante e altri errori di esecuzione.
 func pickInclinedJSONFile() (string, error) {
 	cmd := exec.Command("zenity", "--file-selection", "--title=Importa problema piano inclinato", "--file-filter=JSON files | *.json")
 	out, err := cmd.Output()
@@ -129,6 +137,8 @@ func pickInclinedJSONFile() (string, error) {
 	return path, nil
 }
 
+// decodeInclinedProblemPayload effettua il parsing base del JSON e deduce il tipo
+// di problema (block o rotary) in base ai campi presenti.
 func decodeInclinedProblemPayload(data []byte) (InclinedObjectMode, map[string]interface{}, error) {
 	var payload map[string]interface{}
 	if err := json.Unmarshal(data, &payload); err != nil {
@@ -153,6 +163,8 @@ func decodeInclinedProblemPayload(data []byte) (InclinedObjectMode, map[string]i
 	return InclinedObjectBlock, payload, nil
 }
 
+// parseInclinedBlockPayload valida e converte il payload JSON del problema block
+// in una struttura tipizzata pronta per essere applicata alla config.
 func parseInclinedBlockPayload(payload map[string]interface{}) (*inclinedImportedBlockProblem, error) {
 	required := []string{"mass", "angle", "length", "height", "static_coeff", "dynamic_coeff", "v0", "gravity"}
 	allowed := map[string]struct{}{
@@ -225,6 +237,8 @@ func parseInclinedBlockPayload(payload map[string]interface{}) (*inclinedImporte
 	}, nil
 }
 
+// parseInclinedRotaryPayload valida e converte il payload JSON del problema rotatorio,
+// includendo tipo corpo, raggio e coefficiente rotazionale.
 func parseInclinedRotaryPayload(payload map[string]interface{}) (*inclinedImportedRotaryProblem, error) {
 	required := []string{"body", "mass", "radius", "angle", "length", "height", "rotational_coeff", "v0", "gravity"}
 	allowed := map[string]struct{}{
@@ -308,6 +322,7 @@ func parseInclinedRotaryPayload(payload map[string]interface{}) (*inclinedImport
 	}, nil
 }
 
+// validateAllowedAndRequiredKeys controlla che il payload contenga solo i campi supportati e che tutti i campi obbligatori siano presenti.
 func validateAllowedAndRequiredKeys(payload map[string]interface{}, required []string, allowed map[string]struct{}) error {
 	for key := range payload {
 		if _, ok := allowed[key]; !ok {
@@ -324,6 +339,7 @@ func validateAllowedAndRequiredKeys(payload map[string]interface{}, required []s
 	return nil
 }
 
+// readNumberField legge un campo numerico dal payload JSON e verifica che sia realmente un numero finito (no NaN, no infinito).
 func readNumberField(payload map[string]interface{}, key string) (float64, error) {
 	value, ok := payload[key]
 	if !ok {
@@ -339,6 +355,8 @@ func readNumberField(payload map[string]interface{}, key string) (float64, error
 	return number, nil
 }
 
+// readStringField legge un campo testuale non vuoto dal payload JSON.
+// E utile per campi stringa quando non vengono codificati come numeri.
 func readStringField(payload map[string]interface{}, key string) (string, error) {
 	value, ok := payload[key]
 	if !ok {
@@ -355,6 +373,7 @@ func readStringField(payload map[string]interface{}, key string) (string, error)
 	return text, nil
 }
 
+// validateInclinedCommonValues valida i vincoli fisici comuni tra payload block e rotary: intervalli di massa/angolo/lunghezza/altezza/gravita/velocita e coerenza h <= L*sin(theta).
 func validateInclinedCommonValues(mass, angle, length, height, v0, gravity float64) error {
 	if mass <= 0 {
 		return errors.New("mass deve essere > 0")
@@ -385,6 +404,7 @@ func validateInclinedCommonValues(mass, angle, length, height, v0, gravity float
 	return nil
 }
 
+// parseRotaryBodyType converte il campo numerico "body" (1..5) nel relativo enum InclinedRotaryType usato internamente.
 func parseRotaryBodyType(value interface{}) (InclinedRotaryType, error) {
 	number, ok := value.(float64)
 	if !ok || math.IsNaN(number) || math.IsInf(number, 0) {
@@ -410,6 +430,7 @@ func parseRotaryBodyType(value interface{}) (InclinedRotaryType, error) {
 	}
 }
 
+// applyImportedInclinedBlock copia i dati importati del caso block nella onfigurazione globale, azzerando i campi specifici del caso rotatorio.
 func applyImportedInclinedBlock(problem *inclinedImportedBlockProblem) {
 	config.GlobalConfig.InclinedObjectMode = string(InclinedObjectBlock)
 	config.GlobalConfig.InclinedRotaryType = ""
@@ -430,6 +451,7 @@ func applyImportedInclinedBlock(problem *inclinedImportedBlockProblem) {
 	config.GlobalConfig.InclinedGravitySet = true
 }
 
+// applyImportedInclinedRotary copia i dati importati del caso rotatorio nella configurazione globale, disabilitando i campi di attrito del caso block.
 func applyImportedInclinedRotary(problem *inclinedImportedRotaryProblem) {
 	config.GlobalConfig.InclinedObjectMode = string(InclinedObjectRotary)
 	config.GlobalConfig.InclinedRotaryType = string(problem.Body)

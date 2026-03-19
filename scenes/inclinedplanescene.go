@@ -360,6 +360,7 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 	i.drawTimelineControls(screen)
 }
 
+// FirstLoad salva i dati iniziali (per poter resettare la simulazione) e prepara il modello fisico
 func (i *InclinedPlaneScene) FirstLoad() {
 	i.snapshot = inclinedPlaneSnapshot{
 		objectMode: config.GlobalConfig.InclinedObjectMode,
@@ -415,6 +416,7 @@ func (i *InclinedPlaneScene) Update() SceneId {
 	return InclinedPlaneSceneId
 }
 
+// handleKeyboardScrub permette di scorrere la timeline da tastiera usando le frecce sinistra/destra
 func (i *InclinedPlaneScene) handleKeyboardScrub() {
 	delta, ok := timelineScrubDelta(i.calc.TotalDuration())
 	if !ok {
@@ -424,10 +426,12 @@ func (i *InclinedPlaneScene) handleKeyboardScrub() {
 	i.simState = i.calc.ComputeStateAtTime(i.simState.Time + delta)
 }
 
+// refreshCalculus ricostruisce tutti i valori derivati del modello fisico
 func (i *InclinedPlaneScene) refreshCalculus() {
 	i.calc = ComputeInclinedPlaneCalculus(config.GlobalConfig)
 }
 
+// resetSimulationFromSnapshot ripristina i parametri iniziali salvati, ricalcola il modello e riporta la simulazione al tempo t=0.
 func (i *InclinedPlaneScene) resetSimulationFromSnapshot() {
 	config.GlobalConfig.InclinedObjectMode = i.snapshot.objectMode
 	config.GlobalConfig.InclinedRotaryType = i.snapshot.rotaryType
@@ -451,6 +455,7 @@ func (i *InclinedPlaneScene) resetSimulationFromSnapshot() {
 	i.simState = i.calc.ComputeStateAtTime(0)
 }
 
+// stepSimulation avanza la simulazione di un frame usando il TPS reale. Se la simulazione termina, forza lo stato in pausa
 func (i *InclinedPlaneScene) stepSimulation() {
 	if !i.started || i.simState.Completed || !i.calc.Slides {
 		return
@@ -468,6 +473,7 @@ func (i *InclinedPlaneScene) stepSimulation() {
 	}
 }
 
+// toggleRunState alterna play/pausa. Se la simulazione era completata, riparte da t=0.
 func (i *InclinedPlaneScene) toggleRunState() {
 	if !i.calc.Slides {
 		return
@@ -478,26 +484,30 @@ func (i *InclinedPlaneScene) toggleRunState() {
 	i.started = !i.started
 }
 
+// loadControlImages carica tutte le immagini usate dai controlli e dalla scena
 func (i *InclinedPlaneScene) loadControlImages() {
 	i.playImage = loadImage("img/play.png")
 	i.pauseImage = loadImage("img/pause.png")
 	i.planeImage = loadImage("img/plane.jpg")
 	i.blockImage = loadImage("img/block.png")
 	i.barrelImage = loadImage("img/barrel.png")
-	i.whiteImage = ebiten.NewImage(1, 1)
+	i.whiteImage = ebiten.NewImage(1, 1) // Crea una texture bianca da usare per il triangolo se plane.jpg non è disponibile
 	i.whiteImage.Fill(color.White)
 }
 
+// playButtonRect restituisce il bounding box del pulsante play/pause.
 func (i *InclinedPlaneScene) playButtonRect() (float64, float64, float64, float64) {
 	button, _ := timelineRects()
 	return button.x, button.y, button.w, button.h
 }
 
+// progressBarRect restituisce il bounding box della barra di avanzamento.
 func (i *InclinedPlaneScene) progressBarRect() (float64, float64, float64, float64) {
 	_, bar := timelineRects()
 	return bar.x, bar.y, bar.w, bar.h
 }
 
+// drawTimelineControls disegna pulsante play/pause e progress bar sincronizzati con lo stato corrente della simulazione.
 func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 	button, bar := timelineRects()
 	running := i.started && !i.simState.Completed
@@ -505,6 +515,7 @@ func (i *InclinedPlaneScene) drawTimelineControls(screen *ebiten.Image) {
 	drawTimelineBar(screen, bar, i.calc.SimProgress(i.simState.Time), i.calc.BaseReachProgressFraction())
 }
 
+// handleMouseControl gestisce click su pulsante e barra timeline. Il click sulla barra posiziona direttamente il tempo simulato.
 func (i *InclinedPlaneScene) handleMouseControl() {
 	mx, my := ebiten.CursorPosition()
 	px := float64(mx)
@@ -528,6 +539,7 @@ func (i *InclinedPlaneScene) handleMouseControl() {
 	}
 }
 
+// drawInclinedPlane disegna la rappresentazione geometrica e dinamica: piano inclinato, angolo theta e corpo in movimento sulle due fasi.
 func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBottom float64) {
 	if i.calc.Theta <= 0 || i.calc.DistanceToBase <= 0 {
 		return
@@ -551,9 +563,7 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	}
 	triX0 := leftMargin
 
-	// Triangolo: vertice in alto a sinistra (triX0, triTopY) → apex
-	//            angolo retto in basso a sinistra (triX0, triBaseY)
-	//            angolo θ in basso a destra (triX1, triBaseY)
+	// Disegno del triangolo e calcolo delle dimensioni basate sui dati fisici (calcolo della base orizzontale e dell'altezza, con scaling per adattarsi all'area disponibile)
 	inclineHorizontalMeters := i.calc.DistanceToBase * cosTheta
 	if inclineHorizontalMeters < 0.001 {
 		inclineHorizontalMeters = 0.001
@@ -562,7 +572,7 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	if horizontalMeters <= 0 {
 		horizontalMeters = inclineHorizontalMeters * 1.4
 	} else {
-		// Lascia margine oltre il punto di arresto (es. 7m -> 10m)
+		// Lascia del margine margine oltre il punto di arresto così che il piano non termini direttamente dove si ferma il corpo, ma si estenda un po' oltre
 		horizontalMeters *= 10.0 / 7.0
 	}
 	actionMeters := inclineHorizontalMeters + horizontalMeters
@@ -683,7 +693,6 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 		contactInset := 1.5
 
 		if rotateByPhysics {
-			// Sul tratto orizzontale il corpo rotatorio deve toccare il suolo: niente lift.
 			cx := gx - bW/2
 			cy := triBaseY + contactInset - bH/2
 			op := &ebiten.DrawImageOptions{}
@@ -703,8 +712,7 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 		return
 	}
 
-	// Blocco sul piano inclinato (fasi "ready" e "incline")
-	// Riferimento: vertice in basso a destra (base del piano)
+	// Blocco sul piano inclinato (fasi "ready" e "incline"), usando come riferimento il vertice in basso a destra (base del piano)
 	distFromBase := distToBase - i.simState.S
 	if distFromBase < 0 {
 		distFromBase = 0
@@ -720,7 +728,8 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	sy := syTouch + math.Cos(thetaRad)*contactInset
 
 	if rotateByPhysics {
-		// Mantiene il pivot al centro e solleva lo sprite lungo la normale esterna al piano.
+		// Mantiene il pivot al centro e solleva lo sprite lungo la normale esterna al piano
+		// per dare l'effetto di rotazione sul piano inclinato
 		lift := math.Max(2.0, bH*0.07)
 		cx := sx - bW/2 + math.Sin(thetaRad)*lift
 		cy := sy - bH/2 - math.Cos(thetaRad)*lift
@@ -741,6 +750,7 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	screen.DrawImage(bodyImage, op)
 }
 
+// phaseDisplayName converte il nome interno della fase in una etichetta leggibile per la UI
 func phaseDisplayName(phase string) string {
 	switch phase {
 	case "horizontal":
@@ -752,6 +762,7 @@ func phaseDisplayName(phase string) string {
 	}
 }
 
+// currentFrictionForce restituisce il valore della forza d'attrito attiva nella fase corrente della simulazione
 func (i *InclinedPlaneScene) currentFrictionForce(state InclinedPlaneSimState) float64 {
 	if !i.calc.Slides {
 		return 0
@@ -768,6 +779,7 @@ func (i *InclinedPlaneScene) currentFrictionForce(state InclinedPlaneSimState) f
 	return 0
 }
 
+// currentFrictionWork calcola il lavoro dell'attrito accumulato fino allo stato corrente, separando contributo su piano inclinato e orizzontale
 func (i *InclinedPlaneScene) currentFrictionWork(state InclinedPlaneSimState) float64 {
 	work := 0.0
 	if i.calc.ObjectMode != InclinedObjectRotary && i.calc.DynamicFriction > 0 && state.S > 0 {

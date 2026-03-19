@@ -73,6 +73,10 @@ func (i *InclinedInputScene) Draw(screen *ebiten.Image) {
 	i.drawRotaryInput(screen)
 }
 
+// drawObjectSelection disegna il menu iniziale per scegliere il tipo di corpo:
+// - block solido (senza rotazione)
+// - corpo rotatorio (sfera, cilindro, disco) con scelta della forma
+// Mostra un'anteprima visiva e fornisce opzioni di importazione da file.
 func (i *InclinedInputScene) drawObjectSelection(screen *ebiten.Image) {
 	textDim := config.GlobalConfig.TextDimension
 	sw := float64(config.GlobalConfig.ScreenWidth)
@@ -128,6 +132,7 @@ func (i *InclinedInputScene) drawObjectSelection(screen *ebiten.Image) {
 	}
 }
 
+// drawPreviewImage disegna un'immagine centrata e scalata proportionalmente al target size specificato. Usato per mostrare l'anteprima block/barrel.
 func (i *InclinedInputScene) drawPreviewImage(screen *ebiten.Image, img *ebiten.Image, x, y, targetSize float64) {
 	if img == nil {
 		return
@@ -146,6 +151,7 @@ func (i *InclinedInputScene) drawPreviewImage(screen *ebiten.Image, img *ebiten.
 	screen.DrawImage(img, op)
 }
 
+// drawBlockInput disegna i campi di input specifici per un corpo block (senza rotazione): massa, angolo, lunghezza, altezza blocco, attrito statico/dinamico, velocità iniziale, gravità.
 func (i *InclinedInputScene) drawBlockInput(screen *ebiten.Image) {
 	textDim := config.GlobalConfig.TextDimension
 	spacing := textDim * 1.5
@@ -191,6 +197,7 @@ func (i *InclinedInputScene) drawBlockInput(screen *ebiten.Image) {
 	utils.ScreenDraw(-(textDim / 3), utils.XCenteredWithFont(status, smallText, "libertinus"), y, "light gray", screen, status, "libertinus")
 }
 
+// drawRotaryInput disegna i campi di input specifici per un corpo rotatorio: massa, raggio, angolo, lunghezza, altezza blocco, attrito di rotolamento, velocità iniziale, gravità.
 func (i *InclinedInputScene) drawRotaryInput(screen *ebiten.Image) {
 	textDim := config.GlobalConfig.TextDimension
 	spacing := textDim * 1.5
@@ -260,6 +267,7 @@ func (i *InclinedInputScene) FirstLoad() {
 	i.loadPreviewImages()
 }
 
+// loadPreviewImages carica le immagini PNG per l'anteprima visuale dei corpi (block e barrel). Se il caricamento fallisce, l'immagine rimane nil.
 func (i *InclinedInputScene) loadPreviewImages() {
 	load := func(path string) *ebiten.Image {
 		file, err := os.Open(path)
@@ -280,6 +288,9 @@ func (i *InclinedInputScene) loadPreviewImages() {
 func (i *InclinedInputScene) OnEnter() {}
 func (i *InclinedInputScene) OnExit()  {}
 
+// Update gestisce gli input da tastiera e mouse e aggiorna la scena:
+// - nella fase selezione: routing a updateObjectSelection
+// - nella fase dati: navigazione campi (frecce), conferma (Enter), input numerico
 func (i *InclinedInputScene) Update() SceneId {
 	if i.phase == inclinedSelectObjectPhase {
 		return i.updateObjectSelection()
@@ -315,6 +326,8 @@ func (i *InclinedInputScene) Update() SceneId {
 	return InclinedInputSceneId
 }
 
+// updateObjectSelection gestisce la selezione iniziale del tipo di corpo e l'importazione da file.
+// Consente cambio block<->rotario (frecce sinistra/destra) e cambio forma rotaria (frecce su/giù).
 func (i *InclinedInputScene) updateObjectSelection() SceneId {
 	mx, my := ebiten.CursorPosition()
 	importRect := inclinedImportButtonRect()
@@ -359,6 +372,7 @@ func (i *InclinedInputScene) updateObjectSelection() SceneId {
 	return InclinedInputSceneId
 }
 
+// rotateRotaryType ruota il tipo di corpo rotatorio nel senso indicato da delta tra i tipi disponibili (RotarySolidCylinder, RotaryDisk, RotarySphere, etc.).
 func (i *InclinedInputScene) rotateRotaryType(delta int) {
 	idx := 0
 	for k, kind := range rotaryTypes {
@@ -377,10 +391,13 @@ func (i *InclinedInputScene) rotateRotaryType(delta int) {
 	i.rotaryType = rotaryTypes[idx]
 }
 
+// currentFieldCount restituisce il numero di campi attivi per la fase di input dati (8).
 func (i *InclinedInputScene) currentFieldCount() int {
 	return 8
 }
 
+// renderInputValueBlock formatta il valore di input per il corpo block con le unità di misura corrette
+// (es. "1.5 kg" per massa, "30°" per angolo).
 func (i *InclinedInputScene) renderInputValueBlock(value string, fieldIndex int) string {
 	units := map[int]string{
 		0: " kg",
@@ -393,6 +410,7 @@ func (i *InclinedInputScene) renderInputValueBlock(value string, fieldIndex int)
 	return i.renderInputValueWithUnits(value, fieldIndex, units)
 }
 
+// renderInputValueRotary formatta il valore di input per il corpo rotatorio con le unità di misura corrette.
 func (i *InclinedInputScene) renderInputValueRotary(value string, fieldIndex int) string {
 	units := map[int]string{
 		0: " kg",
@@ -406,6 +424,7 @@ func (i *InclinedInputScene) renderInputValueRotary(value string, fieldIndex int
 	return i.renderInputValueWithUnits(value, fieldIndex, units)
 }
 
+// renderInputValueWithUnits applica le unità di misura al valore e aggiunge effetto blinking se il campo è attivo (cioè in fase di editing).
 func (i *InclinedInputScene) renderInputValueWithUnits(value string, fieldIndex int, units map[int]string) string {
 	if fieldIndex != i.activeField {
 		if value == "" {
@@ -416,6 +435,8 @@ func (i *InclinedInputScene) renderInputValueWithUnits(value string, fieldIndex 
 	return renderBlinkingValue(&i.lastBlink, value)
 }
 
+// handleActiveFieldInput processa i caratteri digitati dall'utente per il campo attualmente selezionato.
+// Indirizza il layout corretto (block vs rotario) e chiama handleNumericInput per ogni campo.
 func (i *InclinedInputScene) handleActiveFieldInput() {
 	if i.objectMode == InclinedObjectRotary {
 		switch i.activeField {
@@ -459,10 +480,12 @@ func (i *InclinedInputScene) handleActiveFieldInput() {
 	}
 }
 
+// handleNumericInput gestisce l'input di caratteri numerici (0-9, ., -). Limita la lunghezza a 8 caratteri e filtra input non validi.
 func (i *InclinedInputScene) handleNumericInput(input *string) {
 	handleNumericTextInput(input, 8)
 }
 
+// tryConfirmActiveField valida il valore nel campo attivo e, se valido, consente il passaggio al campo successivo. Diversa logica per block vs rotario.
 func (i *InclinedInputScene) tryConfirmActiveField() bool {
 	if i.objectMode == InclinedObjectRotary {
 		return i.tryConfirmActiveFieldRotary()
@@ -470,6 +493,7 @@ func (i *InclinedInputScene) tryConfirmActiveField() bool {
 	return i.tryConfirmActiveFieldBlock()
 }
 
+// tryConfirmActiveFieldBlock valida il campo attivo nel layout block (massa, angolo, lunghezza, etc.) e mostra messaggi di errore specifici se la convalida fallisce.
 func (i *InclinedInputScene) tryConfirmActiveFieldBlock() bool {
 	switch i.activeField {
 	case 0:
@@ -522,6 +546,8 @@ func (i *InclinedInputScene) tryConfirmActiveFieldBlock() bool {
 	return true
 }
 
+// tryConfirmActiveFieldRotary valida il campo attivo nel layout rotario (massa, raggio, angolo, etc.).
+// Richiede raggio e attrito rotazionale (obbligatori), mentre altri campi sono opzionali.
 func (i *InclinedInputScene) tryConfirmActiveFieldRotary() bool {
 	switch i.activeField {
 	case 0:
@@ -578,6 +604,7 @@ func (i *InclinedInputScene) tryConfirmActiveFieldRotary() bool {
 	return true
 }
 
+// allInputsValid controlla se TUTTI i campi sono validi per passare alla simulazione. Indirizza a allInputsValidBlock o allInputsValidRotary a seconda del tipo di corpo.
 func (i *InclinedInputScene) allInputsValid() bool {
 	if i.objectMode == InclinedObjectRotary {
 		return i.allInputsValidRotary()
@@ -585,6 +612,9 @@ func (i *InclinedInputScene) allInputsValid() bool {
 	return i.allInputsValidBlock()
 }
 
+// allInputsValidBlock valida TUTTI i campi per il corpo block:
+// massa/lunghezza/gravità obbligatori, attrito angolo opzionali,
+// richiede L o h_block (almeno uno), e coerenza geometrica tra h_block e L*sin(θ).
 func (i *InclinedInputScene) allInputsValidBlock() bool {
 	if _, ok := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle); !ok {
 		return false
@@ -624,6 +654,9 @@ func (i *InclinedInputScene) allInputsValidBlock() bool {
 	return true
 }
 
+// allInputsValidRotary valida TUTTI i campi per il corpo rotatorio:
+// massa/raggio/angolo/attrito_rotazionale obbligatori, altri opzionali,
+// richiede L o h_block, e coerenza geometrica.
 func (i *InclinedInputScene) allInputsValidRotary() bool {
 	if _, ok := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle); !ok {
 		return false
@@ -669,6 +702,9 @@ func (i *InclinedInputScene) allInputsValidRotary() bool {
 	return true
 }
 
+// storeValues acquisisce i valori validati da tutti i campi,
+// calcola i derivati geometrici (es. L da h_block e θ), e
+// sincronizza tutto nella configurazione globale per la simulazione.
 func (i *InclinedInputScene) storeValues() {
 	theta, _ := parseRequiredRange(i.thetaInput, 0, maxInclinedAngle)
 	mass, _, massSet := parseOptionalMin(i.massInput, 0)
@@ -728,6 +764,8 @@ func (i *InclinedInputScene) storeValues() {
 	config.GlobalConfig.InclinedMuKSet = muKSet
 }
 
+// parseRequiredRange valida che l'input non sia vuoto e sia un numero in [min, max].
+// Restituisce il valore e un booleano di validità.
 func parseRequiredRange(input string, min, max float64) (float64, bool) {
 	if strings.TrimSpace(input) == "" {
 		return 0, false
@@ -742,6 +780,7 @@ func parseRequiredRange(input string, min, max float64) (float64, bool) {
 	return value, true
 }
 
+// parseRequiredMin valida che l'input non sia vuoto e sia un numero > min.
 func parseRequiredMin(input string, min float64) (float64, bool) {
 	if strings.TrimSpace(input) == "" {
 		return 0, false
@@ -756,6 +795,7 @@ func parseRequiredMin(input string, min float64) (float64, bool) {
 	return value, true
 }
 
+// parseRequiredNonNegative valida che l'input non sia vuoto e sia un numero >= 0.
 func parseRequiredNonNegative(input string) (float64, bool) {
 	if strings.TrimSpace(input) == "" {
 		return 0, false
@@ -770,6 +810,8 @@ func parseRequiredNonNegative(input string) (float64, bool) {
 	return value, true
 }
 
+// parseOptionalMin permette input vuoto (che restituisce isSet=false).
+// Se presente, valida che sia un numero > min. Restituisce (valore, ok, isSet).
 func parseOptionalMin(input string, min float64) (float64, bool, bool) {
 	if strings.TrimSpace(input) == "" {
 		return 0, true, false
@@ -784,6 +826,8 @@ func parseOptionalMin(input string, min float64) (float64, bool, bool) {
 	return value, true, true
 }
 
+// parseOptionalNonNegative permette input vuoto (che restituisce isSet=false).
+// Se presente, valida che sia un numero >= 0. Restituisce (valore, ok, isSet).
 func parseOptionalNonNegative(input string) (float64, bool, bool) {
 	if strings.TrimSpace(input) == "" {
 		return 0, true, false
@@ -798,11 +842,17 @@ func parseOptionalNonNegative(input string) (float64, bool, bool) {
 	return value, true, true
 }
 
+// parseFloatInput converte una stringa in float64, accettando "," come separatore decimale
+// (automaticamente convertito a ".") e applicando trim di spazi.
 func parseFloatInput(input string) (float64, error) {
 	clean := strings.ReplaceAll(strings.TrimSpace(input), ",", ".")
 	return strconv.ParseFloat(clean, 64)
 }
 
+// validateHBlock valida il campo altezza blocco (h_block):
+// - se vuoto, accettato per default
+// - se presente, deve essere > 0 e <= L*sin(θ) (coerenza geometrica)
+// - richiede che theta e L (o almeno theta) siano già inseriti e validi.
 func (i *InclinedInputScene) validateHBlock() bool {
 	if strings.TrimSpace(i.hBlockInput) == "" {
 		return true

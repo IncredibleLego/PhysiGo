@@ -683,10 +683,9 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 		contactInset := 1.5
 
 		if rotateByPhysics {
-			// Mantiene il pivot al centro come prima, ma leggermente sollevato dal piano.
-			lift := math.Max(2.0, bH*0.07)
+			// Sul tratto orizzontale il corpo rotatorio deve toccare il suolo: niente lift.
 			cx := gx - bW/2
-			cy := triBaseY + contactInset - bH/2 - lift
+			cy := triBaseY + contactInset - bH/2
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(bScale, bScale)
 			op.GeoM.Translate(-bW/2, -bH/2)

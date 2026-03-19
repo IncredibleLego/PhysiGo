@@ -280,7 +280,14 @@ func (c InclinedPlaneCalculus) ComputeStateAtTime(t float64) InclinedPlaneSimSta
 	state.HorizS = vBase*horizontalT - 0.5*decel*horizontalT*horizontalT
 	state.Velocity = vBase - decel*horizontalT
 
-	if state.Velocity <= 0 || horizontalT >= c.HorizontalStopTime {
+	// Protect stop detection from floating-point residue near the analytical stop point.
+	const stopEpsilon = 1e-9
+	if state.Velocity <= 0 {
+		state.Velocity = 0
+	}
+	reachedStopByVelocity := state.Velocity <= stopEpsilon
+	reachedStopByTime := horizontalT >= c.HorizontalStopTime-stopEpsilon
+	if reachedStopByVelocity || reachedStopByTime {
 		state.Velocity = 0
 		state.HorizS = c.HorizontalStopDist
 		state.Phase = "stopped"

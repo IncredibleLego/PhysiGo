@@ -1,6 +1,7 @@
 package scenes
 
 import (
+	"errors"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
@@ -113,6 +114,18 @@ func (i *InclinedInputScene) drawObjectSelection(screen *ebiten.Image) {
 
 	status := "Invio per passare ai dati"
 	utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(status, smallText, "libertinus"), sh*0.80, "light gray", screen, status, "libertinus")
+
+	mx, my := ebiten.CursorPosition()
+	importRect := inclinedImportButtonRect()
+	hovered := importRect.contains(float64(mx), float64(my))
+	drawInclinedImportButton(screen, hovered)
+
+	importHint := "Clicca il bottone o premi I per importare"
+	utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(importHint, smallText, "libertinus"), sh*0.96, "light gray", screen, importHint, "libertinus")
+
+	if i.validationMessage != "" {
+		utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(i.validationMessage, smallText, "libertinus"), sh*0.84, "red", screen, i.validationMessage, "libertinus")
+	}
 }
 
 func (i *InclinedInputScene) drawPreviewImage(screen *ebiten.Image, img *ebiten.Image, x, y, targetSize float64) {
@@ -269,8 +282,7 @@ func (i *InclinedInputScene) OnExit()  {}
 
 func (i *InclinedInputScene) Update() SceneId {
 	if i.phase == inclinedSelectObjectPhase {
-		i.updateObjectSelection()
-		return InclinedInputSceneId
+		return i.updateObjectSelection()
 	}
 
 	fieldCount := i.currentFieldCount()
@@ -303,7 +315,24 @@ func (i *InclinedInputScene) Update() SceneId {
 	return InclinedInputSceneId
 }
 
-func (i *InclinedInputScene) updateObjectSelection() {
+func (i *InclinedInputScene) updateObjectSelection() SceneId {
+	mx, my := ebiten.CursorPosition()
+	importRect := inclinedImportButtonRect()
+	importClicked := inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) && importRect.contains(float64(mx), float64(my))
+
+	if importClicked || inpututil.IsKeyJustPressed(ebiten.KeyI) {
+		err := importInclinedPlaneProblemFromFile()
+		if err == nil {
+			i.validationMessage = ""
+			return InclinedPlaneSceneId
+		}
+		if errors.Is(err, errImportCancelled) {
+			return InclinedInputSceneId
+		}
+		i.validationMessage = err.Error()
+		return InclinedInputSceneId
+	}
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) || inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) {
 		if i.objectMode == InclinedObjectBlock {
 			i.objectMode = InclinedObjectRotary
@@ -326,6 +355,8 @@ func (i *InclinedInputScene) updateObjectSelection() {
 		i.activeField = 0
 		i.validationMessage = ""
 	}
+
+	return InclinedInputSceneId
 }
 
 func (i *InclinedInputScene) rotateRotaryType(delta int) {

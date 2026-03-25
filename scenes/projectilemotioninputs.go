@@ -96,6 +96,10 @@ func (p *ProjectileMotionInputScene) OnEnter() {}
 func (p *ProjectileMotionInputScene) OnExit()  {}
 
 func (p *ProjectileMotionInputScene) Update() SceneId {
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		return PauseSceneId
+	}
+
 	// Navigazione verticale ciclica tra i campi del form.
 	fieldCount := 6
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {

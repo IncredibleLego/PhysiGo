@@ -292,6 +292,10 @@ func (i *InclinedInputScene) OnExit()  {}
 // - nella fase selezione: routing a updateObjectSelection
 // - nella fase dati: navigazione campi (frecce), conferma (Enter), input numerico
 func (i *InclinedInputScene) Update() SceneId {
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		return PauseSceneId
+	}
+
 	if i.phase == inclinedSelectObjectPhase {
 		return i.updateObjectSelection()
 	}

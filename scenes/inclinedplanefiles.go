@@ -117,7 +117,12 @@ func importInclinedPlaneProblemFromFile() error {
 // pickInclinedJSONFile apre un file-picker (zenity) e restituisce il path scelto.
 // Distingue annullamento utente, comando mancante e altri errori di esecuzione.
 func pickInclinedJSONFile() (string, error) {
-	cmd := exec.Command("zenity", "--file-selection", "--title=Importa problema piano inclinato", "--file-filter=JSON files | *.json")
+	startDir := "examples/"
+	if wd, err := os.Getwd(); err == nil {
+		startDir = filepath.Join(wd, "examples") + string(os.PathSeparator)
+	}
+
+	cmd := exec.Command("zenity", "--file-selection", "--filename="+startDir, "--title=Importa problema piano inclinato", "--file-filter=JSON files | *.json")
 	out, err := cmd.Output()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {

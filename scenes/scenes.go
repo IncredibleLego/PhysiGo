@@ -24,11 +24,7 @@ const (
 	StartSceneId
 	ExitSceneId
 	PauseSceneId
-	ComputerSceneId
-	MultiplayerSceneId
 	OptionsSceneId
-	NameInputSceneId
-	HighScoresSceneId
 	InclinedInputSceneId
 	InclinedPlaneSceneId
 	ProjectileMotionInputSceneId

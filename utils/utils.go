@@ -3,14 +3,12 @@ package utils
 import (
 	"bytes"
 	_ "embed"
-	"image/color"
 	"log"
 	"physiGo/config"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // This file contains utility functions for the game.
@@ -128,21 +126,6 @@ func XCenteredWithFont(message string, fontSize float64, fontName string) float6
 	return x
 }
 
-// NEED TO ADAPT
-func Net(screen *ebiten.Image) {
-
-	dim := config.GlobalConfig.ScreenHeight / 30
-	width := 3 * config.GlobalConfig.Scale
-
-	for i := 0; i < config.GlobalConfig.ScreenHeight; i += dim {
-		vector.DrawFilledRect(screen,
-			float32(config.GlobalConfig.ScreenWidth/2), float32(i),
-			float32(width), float32(dim/2),
-			color.White, false,
-		)
-	}
-}
-
 func Color(colorName string) (float32, float32, float32, float32) {
 	switch colorName {
 	case "white":
@@ -157,66 +140,21 @@ func Color(colorName string) (float32, float32, float32, float32) {
 	case "green":
 		// RGBA: 0, 255, 0, 255
 		return 0, 1, 0, 1
-	case "blue":
-		// RGBA: 0, 0, 255, 255
-		return 0, 0, 1, 1
 	case "yellow":
 		// RGBA: 255, 255, 0, 255
 		return 1, 1, 0, 1
 	case "cyan":
 		// RGBA: 0, 255, 255, 255
 		return 0, 1, 1, 1
-	case "magenta":
-		// RGBA: 255, 0, 255, 255
-		return 1, 0, 1, 1
 	case "light gray":
 		// RGBA: 204, 204, 204, 255
 		return 0.8, 0.8, 0.8, 1
-	case "dark gray":
-		// RGBA: 51, 51, 51, 255
-		return 0.2, 0.2, 0.2, 1
 	case "orange":
 		// RGBA: 255, 128, 0, 255
 		return 1, 0.5, 0, 1
-	case "pink":
-		// RGBA: 255, 128, 179, 255
-		return 1, 0.5, 0.7, 1
-	case "lime":
-		// RGBA: 128, 255, 0, 255
-		return 0.5, 1, 0, 1
 	case "sky blue":
 		// RGBA: 77, 153, 255, 255
 		return 0.3, 0.6, 1, 1
-	case "purple":
-		// RGBA: 153, 0, 255, 255
-		return 0.6, 0, 1, 1
-	case "brown":
-		// RGBA: 153, 77, 0, 255
-		return 0.6, 0.3, 0, 1
-	case "dark red":
-		// RGBA: 128, 0, 0, 255
-		return 0.5, 0, 0, 1
-	case "dark green":
-		// RGBA: 0, 128, 0, 255
-		return 0, 0.5, 0, 1
-	case "dark blue":
-		// RGBA: 0, 0, 128, 255
-		return 0, 0, 0.5, 1
-	case "dark purple":
-		// RGBA: 102, 0, 153, 255
-		return 0.4, 0, 0.6, 1
-	case "gold":
-		// RGBA: 255, 215, 0, 255
-		return 1, 0.84, 0, 1
-	case "silver":
-		// RGBA: 192, 192, 192, 255
-		return 0.75, 0.75, 0.75, 1
-	case "bronze":
-		// RGBA: 205, 127, 50, 255
-		return 0.8, 0.5, 0.2, 1
-	case "soft yellow":
-		// RGBA: 255, 255, 204, 1.0
-		return 1, 1, 0.8, 1
 	default:
 		log.Printf("Unknown color: %s", colorName)
 		return 0, 0, 0, 255 // Default to black

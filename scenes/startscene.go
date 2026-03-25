@@ -15,11 +15,9 @@ type StartScene struct { // is the scene loaded now
 	currentMenu        *menu.RegularMenu
 	mainMenu           *menu.RegularMenu
 	playMenu           *menu.RegularMenu
-	gopongMenu         *menu.RegularMenu
 	exitPopup          *utils.Popup
 	lastEnterPressTime time.Time
 	actionExecuted     bool
-	selectedMode       int
 }
 
 func (s *StartScene) ShouldPreserveState(reason SceneChangeReason) bool {
@@ -31,7 +29,6 @@ func NewStartScene() *StartScene {
 		currentMenu: nil,
 		mainMenu:    nil,
 		playMenu:    nil,
-		gopongMenu:  nil,
 	}
 }
 
@@ -52,7 +49,6 @@ func (s *StartScene) FirstLoad() {
 		Options: []menu.MenuOption{
 			{Label: "PLAY"},
 			{Label: "OPTIONS"},
-			{Label: "HIGHSCORES"},
 			{Label: "CREDITS"},
 			{Label: "QUIT"},
 		},
@@ -64,18 +60,6 @@ func (s *StartScene) FirstLoad() {
 		Options: []menu.MenuOption{
 			{Label: "INCLINED PLANE"},
 			{Label: "PROJECTILE MOTION"},
-			{Label: "GOPONG"},
-			{Label: "BACK"},
-		},
-		Selected:     0,
-		LastMoveTime: time.Now(),
-		Offset:       (float64(config.GlobalConfig.ScreenHeight) * 0.20833),
-	}
-	s.gopongMenu = &menu.RegularMenu{
-		Options: []menu.MenuOption{
-			{Label: "SOLO MODE"},
-			{Label: "COMPUTER MODE"},
-			{Label: "MULTIPLAYER MODE"},
 			{Label: "BACK"},
 		},
 		Selected:     0,
@@ -91,11 +75,6 @@ func (s *StartScene) FirstLoad() {
 	s.lastEnterPressTime = time.Now()
 	s.actionExecuted = false
 }
-
-/*
-popupWidth := int(float64(config.GlobalConfig.ScreenWidth) * 0.4)  // 40% della larghezza
-popupHeight := int(float64(config.GlobalConfig.ScreenHeight) * 0.2) // 20% dell'altezza
-*/
 
 func (s *StartScene) OnEnter() {
 
@@ -147,10 +126,6 @@ func (s *StartScene) Update() SceneId {
 
 var _ Scene = (*StartScene)(nil)
 
-func (s *StartScene) GetSelectedMode() int {
-	return s.selectedMode
-}
-
 func (s *StartScene) handleMenuSelection() SceneId {
 	selectedOption := s.currentMenu.Options[s.currentMenu.Selected].Label
 
@@ -160,8 +135,6 @@ func (s *StartScene) handleMenuSelection() SceneId {
 		s.playMenu.Selected = 0
 	case "OPTIONS":
 		return OptionsSceneId
-	case "HIGHSCORES":
-		return HighScoresSceneId
 	case "CREDITS":
 		fmt.Println("CREDITS NOT YET IMPLEMENTED")
 	case "QUIT":
@@ -171,25 +144,8 @@ func (s *StartScene) handleMenuSelection() SceneId {
 		return InclinedInputSceneId
 	case "PROJECTILE MOTION":
 		return ProjectileMotionInputSceneId
-	case "GOPONG":
-		s.currentMenu = s.gopongMenu
-		s.gopongMenu.Selected = 0
-	case "SOLO MODE":
-		s.selectedMode = 1
-		return NameInputSceneId
-	case "COMPUTER MODE":
-		s.selectedMode = 3
-		return NameInputSceneId
-	case "MULTIPLAYER MODE":
-		s.selectedMode = 2
-		return NameInputSceneId
 	case "BACK":
-		if s.currentMenu == s.gopongMenu {
-			s.currentMenu = s.playMenu
-			s.playMenu.Selected = 2
-		} else {
-			s.currentMenu = s.mainMenu
-		}
+		s.currentMenu = s.mainMenu
 	}
 	return StartSceneId
 }

@@ -17,14 +17,9 @@ type Game struct {
 
 func NewGame() *Game {
 	sceneMap := map[scenes.SceneId]scenes.Scene{
-		scenes.GameSceneId:                  scenes.NewGameScene(),
 		scenes.StartSceneId:                 scenes.NewStartScene(),
 		scenes.PauseSceneId:                 nil,
-		scenes.ComputerSceneId:              scenes.NewComputerScene(),
-		scenes.MultiplayerSceneId:           scenes.NewMultiplayerScene(),
 		scenes.OptionsSceneId:               nil,
-		scenes.NameInputSceneId:             nil,
-		scenes.HighScoresSceneId:            nil,
 		scenes.InclinedInputSceneId:         nil,
 		scenes.InclinedPlaneSceneId:         scenes.NewInclinedPlaneScene(),
 		scenes.ProjectileMotionInputSceneId: nil,
@@ -75,25 +70,14 @@ func (g *Game) Update() error {
 		} else if g.activeSceneId == scenes.PauseSceneId && nextSceneId != scenes.ExitSceneId {
 			// If the current scene is the pause scene and the next scene is not the exit scene, the reason is set to "unpause"
 			reason = scenes.Unpause
-		} else if nextSceneId == scenes.NameInputSceneId {
-			// If the next scene is the name input scene, it is created and the reason is set to "other"
-			startScene := g.sceneMap[scenes.StartSceneId].(*scenes.StartScene)
-			selectedMode := startScene.GetSelectedMode()
-			// A new name input scene is created with the selected mode from the start scene
-			g.sceneMap[scenes.NameInputSceneId] = scenes.NewNameInputScene(selectedMode)
-			reason = scenes.Other
 		} else if nextSceneId == scenes.InclinedInputSceneId {
 			g.sceneMap[scenes.InclinedInputSceneId] = scenes.NewInclinedInputScene()
 			reason = scenes.Other
 		} else if nextSceneId == scenes.ProjectileMotionInputSceneId {
 			g.sceneMap[scenes.ProjectileMotionInputSceneId] = scenes.NewProjectileMotionInputScene()
 			reason = scenes.Other
-		} else if nextSceneId == scenes.HighScoresSceneId {
-			// If the next scene is the high scores scene, it is created and the reason is set to "other"
-			g.sceneMap[scenes.HighScoresSceneId] = scenes.NewHighScoresScene()
-			reason = scenes.Other
 		} else {
-			// If the next scene is not the pause scene, the name input scene, the highscoresscene or the exit scene, the reason is set to "exit"
+			// If the next scene is not the pause scene, the name input scene or the exit scene, the reason is set to "exit"
 			reason = scenes.Exit
 		}
 

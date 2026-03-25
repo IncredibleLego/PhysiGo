@@ -10,8 +10,6 @@ import (
 type Config struct {
 	Scale                   float64
 	Fullscreen              bool
-	Player1Name             string
-	Player2Name             string
 	InclinedObjectMode      string
 	InclinedRotaryType      string
 	InclinedRadius          float64
@@ -48,27 +46,17 @@ type Config struct {
 	ProjectileRangeSet      bool
 	ProjectileTimeSet       bool
 	ProjectileGravitySet    bool
-	BallSpeed               int
-	BallSize                int
-	PaddleSpeed             int
-	PaddleHeight            int
-	PaddleDistanceFromWall  int
-	PaddleWidth             int
-	Difficulty              float64
 	TextDimension           float64
 	ScreenWidth             int
 	ScreenHeight            int
 	PopupWidth              int
 	PopupHeight             int
 	OptionsPerSecond        time.Duration
-	MaxBounceAngle          float64
 }
 
 var GlobalConfig = &Config{
 	Scale:                   1.0,
 	Fullscreen:              true,
-	Player1Name:             "Player 1",
-	Player2Name:             "Player 2",
 	InclinedObjectMode:      "block",
 	InclinedRotaryType:      "",
 	InclinedRadius:          0,
@@ -105,27 +93,17 @@ var GlobalConfig = &Config{
 	ProjectileRangeSet:      false,
 	ProjectileTimeSet:       false,
 	ProjectileGravitySet:    false,
-	BallSpeed:               9,
-	BallSize:                22,
-	PaddleSpeed:             9,
-	PaddleHeight:            150,
-	PaddleDistanceFromWall:  60,
-	PaddleWidth:             22,
-	Difficulty:              0.5,
 	TextDimension:           30,
 	ScreenWidth:             960,
 	ScreenHeight:            720,
 	PopupWidth:              528, // 55% of height
 	PopupHeight:             216, // 30% of height
 	OptionsPerSecond:        time.Duration(time.Second / 4),
-	MaxBounceAngle:          0.7853975, //45.0 * (3.14159 / 180.0)
 }
 
 var DefaultConfig = &Config{
 	Scale:                   1.0,
 	Fullscreen:              true,
-	Player1Name:             "Player 1",
-	Player2Name:             "Player 2",
 	InclinedObjectMode:      "block",
 	InclinedRotaryType:      "",
 	InclinedRadius:          0,
@@ -162,31 +140,17 @@ var DefaultConfig = &Config{
 	ProjectileRangeSet:      false,
 	ProjectileTimeSet:       false,
 	ProjectileGravitySet:    false,
-	BallSpeed:               9,
-	BallSize:                22,
-	PaddleSpeed:             9,
-	PaddleHeight:            150,
-	PaddleDistanceFromWall:  60,
-	PaddleWidth:             22,
-	Difficulty:              0.5,
 	TextDimension:           30,
 	ScreenWidth:             960,
 	ScreenHeight:            720,
 	PopupWidth:              528, // 55% of height
 	PopupHeight:             216, // 30% of height
 	OptionsPerSecond:        time.Duration(time.Second / 4),
-	MaxBounceAngle:          0.7853975, //45.0 * (3.14159 / 180.0)
 }
 
 // Applica la scala ai valori di default e aggiorna la config
 func ApplyScaleToConfig(cfg *Config, scale float64) {
 	cfg.Scale = scale
-	cfg.BallSpeed = int(math.Round(float64(DefaultConfig.BallSpeed) * scale))
-	cfg.BallSize = int(math.Round(float64(DefaultConfig.BallSize) * scale))
-	cfg.PaddleSpeed = int(math.Round(float64(DefaultConfig.PaddleSpeed) * scale))
-	cfg.PaddleHeight = int(math.Round(float64(DefaultConfig.PaddleHeight) * scale))
-	cfg.PaddleDistanceFromWall = int(math.Round(float64(DefaultConfig.PaddleDistanceFromWall) * scale))
-	cfg.PaddleWidth = int(math.Round(float64(DefaultConfig.PaddleWidth) * scale))
 	cfg.ScreenWidth = ((int(math.Round(float64(DefaultConfig.ScreenWidth)*scale)) + 5) / 10) * 10
 	cfg.ScreenHeight = ((int(math.Round(float64(DefaultConfig.ScreenHeight)*scale)) + 5) / 10) * 10
 	cfg.PopupWidth = int(math.Round(float64(DefaultConfig.PopupWidth) * scale))
@@ -198,17 +162,6 @@ func ApplyScaleToConfig(cfg *Config, scale float64) {
 func ChangeScale(newScale float64) error {
 	ApplyScaleToConfig(GlobalConfig, newScale)
 	return SaveConfig(GlobalConfig)
-}
-
-// DifficultyString returns a string representation of the difficulty level.
-func DifficultyString() string {
-	if GlobalConfig.Difficulty < 0.33 {
-		return "Easy"
-	}
-	if GlobalConfig.Difficulty >= 0.33 && GlobalConfig.Difficulty < 0.66 {
-		return "Medium"
-	}
-	return "Hard"
 }
 
 const configFilePath = "./config/settings.json" // Name of the configuration file

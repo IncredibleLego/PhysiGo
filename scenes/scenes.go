@@ -29,6 +29,7 @@ const (
 	InclinedPlaneSceneId
 	ProjectileMotionInputSceneId
 	ProjectileMotionSceneId
+	CreditsSceneId
 )
 
 type Scene interface {

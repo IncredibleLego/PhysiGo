@@ -1,7 +1,6 @@
 package scenes
 
 import (
-	"fmt"
 	"physiGo/config"
 	"physiGo/menu"
 	"physiGo/utils"
@@ -97,8 +96,6 @@ func (s *StartScene) Update() SceneId {
 		if nextMenu != nil {
 			if regularMenu, ok := nextMenu.(*menu.RegularMenu); ok {
 				s.currentMenu = regularMenu
-			} else {
-				fmt.Println("Error: nextMenu is not of type *menu.RegularMenu")
 			}
 			s.lastEnterPressTime = time.Now() // Resetta il tempo per evitare input immediati
 			s.actionExecuted = false
@@ -136,7 +133,7 @@ func (s *StartScene) handleMenuSelection() SceneId {
 	case "OPTIONS":
 		return OptionsSceneId
 	case "CREDITS":
-		fmt.Println("CREDITS NOT YET IMPLEMENTED")
+		return CreditsSceneId
 	case "QUIT":
 		s.exitPopup.Active = true
 		s.exitPopup.Selected = 0

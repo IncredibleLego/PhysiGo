@@ -24,6 +24,7 @@ func NewGame() *Game {
 		scenes.InclinedPlaneSceneId:         scenes.NewInclinedPlaneScene(),
 		scenes.ProjectileMotionInputSceneId: nil,
 		scenes.ProjectileMotionSceneId:      scenes.NewProjectileMotionScene(),
+		scenes.CreditsSceneId:               scenes.NewCreditsScene(),
 	}
 	activeSceneId := scenes.StartSceneId
 	sceneMap[activeSceneId].FirstLoad()

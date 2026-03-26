@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -164,13 +165,26 @@ func ChangeScale(newScale float64) error {
 	return SaveConfig(GlobalConfig)
 }
 
-const configFilePath = "./config/settings.json" // Name of the configuration file
+var configFilePath = resolveConfigFilePath()
+
+func resolveConfigFilePath() string {
+	execPath, err := os.Executable()
+	if err != nil {
+		return filepath.Join("config", "settings.json")
+	}
+
+	execDir := filepath.Dir(execPath)
+	return filepath.Join(execDir, "config", "settings.json")
+}
 
 // SaveConfig saves the configuration to a JSON file.
 func SaveConfig(config *Config) error {
 	// Converts *config struct in JSON formatted with indentation ("" is prefix and "  " is indentation)
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(configFilePath), 0o755); err != nil {
 		return err
 	}
 	// Create the file if it doesn't exist, or replace it if it does

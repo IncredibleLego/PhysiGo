@@ -224,8 +224,42 @@ Sapendo che:
 <details>
 <summary><strong>Installazione</strong></summary>
 
-TBD
-Compatibile con Linux e WIndows
+Ci sono diversi modi per utilizzare PhysiGo
+
+### 1) Scaricare la relase ufficiale
+
+Andando sulla [pagina ufficiale](https://github.com/IncredibleLego/PhysiGo) del progetto è possibile trovare l'ultima relase ufficiale dove sono disponibili per il download i file per Linux (.tar) e Windows (.zip)
+
+- [Scarica Versione Linux](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.0/PhysiGo-linux.tar.gz)
+- [Scarica Versione Windows](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.0/PhysiGo-windows.zip)
+
+Una volta scaricata la corretta versione
+
+- Estrai l'archivio
+- Vai nella cartella estratta
+- Puoi avviare il programma cliccando sull'eseguibile "PhysiGo" oppure eseguendo da terminale
+
+### 2) Clonare la repository
+
+È possibile clonare l'intera repository facendo
+
+```bash
+git clone https://github.com/IncredibleLego/PhysiGo.git
+```
+
+Una volta clonata la repository, entrando nella cartella del progetto, è possibile avviare il progetto direttamente con
+
+```bash
+go run .
+```
+
+Oppure si può compilare il progetto con
+
+```bash
+go build
+```
+
+E poi eseguire l'eseguibile
 
 </details>
 
@@ -448,7 +482,41 @@ Knowing that:
 <details>
 <summary><strong>Installation</strong></summary>
 
-TBD
+There are many ways to use PhysiGo
+
+### 1) Download the official release
+
+By going on the [official page](https://github.com/IncredibleLego/PhysiGo) of the project it is possibile to find the latest official release aviabile to download for Linux (.tar) and Windows (.zip)
+
+- [Download Linux Version](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.0/PhysiGo-linux.tar.gz)
+- [Download Windows Version](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.0/PhysiGo-windows.zip)
+
+Once the correct version is downloaded
+
+- Extract the archive
+- Enter the extracted folder
+- You can start the program by clicking on the executable "PhysiGo" or by executing by terminal
+
+### 2) Cloning the repository
+
+It is possibile to clone the entire repository by doing
+
+```bash
+git clone https://github.com/IncredibleLego/PhysiGo.git
+```
+
+Once the repository is cloned, by entering in the project folder, it is possibile to immediately start the project with
+
+```bash
+go run .
+```
+Or you can compile the project with
+
+```bash
+go build
+```
+
+And then start the executable
 
 </details>
 

@@ -1,0 +1,58 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - os: windows
+            goos: windows
+            ext: .exe
+            archive: zip
+          - os: linux
+            goos: linux
+            ext: ""
+            archive: tar.gz
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build binary
+        run: |
+          GOOS=${{ matrix.goos }} GOARCH=amd64 go build -o PhysiGo${{ matrix.ext }}
+
+      - name: Prepare release folder
+        run: |
+          mkdir PhysiGo
+          mv PhysiGo${{ matrix.ext }} PhysiGo/
+
+          # Copia cartelle necessarie
+          cp -r config PhysiGo/
+          cp -r examples PhysiGo/
+
+      - name: Create archive
+        run: |
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            zip -r PhysiGo-${{ matrix.os }}.zip PhysiGo
+          else
+            tar -czvf PhysiGo-${{ matrix.os }}.tar.gz PhysiGo
+          fi
+
+      - name: Upload release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            PhysiGo-${{ matrix.os }}.*

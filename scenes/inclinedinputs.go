@@ -165,9 +165,9 @@ func (i *InclinedInputScene) drawBlockInput(screen *ebiten.Image) {
 		"θ (0°-89°): " + i.renderInputValueBlock(i.thetaInput, 1),
 		"L (length > 0): " + i.renderInputValueBlock(i.lengthInput, 2),
 		"h_block (height): " + i.renderInputValueBlock(i.hBlockInput, 3),
-		"μ_s (>=0): " + i.renderInputValueBlock(i.muSInput, 4),
-		"μ_k (>=0): " + i.renderInputValueBlock(i.muKInput, 5),
-		"v0 (initial speed): " + i.renderInputValueBlock(i.v0Input, 6),
+		"μₛ (≥0): " + i.renderInputValueBlock(i.muSInput, 4),
+		"μₖ (≥0): " + i.renderInputValueBlock(i.muKInput, 5),
+		"v₀ (initial speed): " + i.renderInputValueBlock(i.v0Input, 6),
 		"g (gravity): " + i.renderInputValueBlock(i.gravityInput, 7),
 	}
 
@@ -216,8 +216,8 @@ func (i *InclinedInputScene) drawRotaryInput(screen *ebiten.Image) {
 		"θ (0°-89°): " + i.renderInputValueRotary(i.thetaInput, 2),
 		"L (length > 0): " + i.renderInputValueRotary(i.lengthInput, 3),
 		"h_block (height): " + i.renderInputValueRotary(i.hBlockInput, 4),
-		"μ_r (>=0): " + i.renderInputValueRotary(i.muRInput, 5),
-		"v0 (initial speed): " + i.renderInputValueRotary(i.v0Input, 6),
+		"μᵣ (≥0): " + i.renderInputValueRotary(i.muRInput, 5),
+		"v₀ (initial speed): " + i.renderInputValueRotary(i.v0Input, 6),
 		"g (gravity): " + i.renderInputValueRotary(i.gravityInput, 7),
 	}
 
@@ -409,7 +409,7 @@ func (i *InclinedInputScene) renderInputValueBlock(value string, fieldIndex int)
 		2: " m",
 		3: " m",
 		6: " m/s",
-		7: " m/s^2",
+		7: " m/s²",
 	}
 	return i.renderInputValueWithUnits(value, fieldIndex, units)
 }
@@ -423,7 +423,7 @@ func (i *InclinedInputScene) renderInputValueRotary(value string, fieldIndex int
 		3: " m",
 		4: " m",
 		6: " m/s",
-		7: " m/s^2",
+		7: " m/s²",
 	}
 	return i.renderInputValueWithUnits(value, fieldIndex, units)
 }
@@ -525,19 +525,19 @@ func (i *InclinedInputScene) tryConfirmActiveFieldBlock() bool {
 	case 4:
 		_, ok, _ := parseOptionalNonNegative(i.muSInput)
 		if !ok {
-			i.validationMessage = "μ_s must be >= 0"
+			i.validationMessage = "μₛ must be ≥ 0"
 			return false
 		}
 	case 5:
 		_, ok, _ := parseOptionalNonNegative(i.muKInput)
 		if !ok {
-			i.validationMessage = "μ_k must be >= 0"
+			i.validationMessage = "μₖ must be ≥ 0"
 			return false
 		}
 	case 6:
 		_, ok, _ := parseOptionalNonNegative(i.v0Input)
 		if !ok {
-			i.validationMessage = "v0 must be >= 0"
+			i.validationMessage = "v0 must be ≥ 0"
 			return false
 		}
 	case 7:
@@ -589,13 +589,13 @@ func (i *InclinedInputScene) tryConfirmActiveFieldRotary() bool {
 	case 5:
 		_, ok := parseRequiredNonNegative(i.muRInput)
 		if !ok {
-			i.validationMessage = "μ_r must be >= 0"
+			i.validationMessage = "μᵣ must be ≥ 0"
 			return false
 		}
 	case 6:
 		_, ok, _ := parseOptionalNonNegative(i.v0Input)
 		if !ok {
-			i.validationMessage = "v0 must be >= 0"
+			i.validationMessage = "v₀ must be ≥ 0"
 			return false
 		}
 	case 7:
@@ -666,7 +666,7 @@ func (i *InclinedInputScene) allInputsValidRotary() bool {
 		return false
 	}
 	if _, ok := parseRequiredNonNegative(i.muRInput); !ok {
-		i.validationMessage = "μ_r must be >= 0"
+		i.validationMessage = "μ_r must be ≥ 0"
 		return false
 	}
 	if _, ok, _ := parseOptionalMin(i.massInput, 0); !ok {

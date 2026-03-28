@@ -14,7 +14,7 @@ Physics playground for Inclined Plane and Projectile Motion
 
 ## 🇮🇹 ITALIANO
 
-PhysiGo è un simulatore che permette di ricreare delle situazioni di piano inclinato e di moto del proiettile, visualizzare la scena ricreata e i dati in tempo reale d'esecuzione. È possibile inserire i dati manualmente o importare i problemi da file. I dati in input sono verificati per evitare dati scorretti o incongruenze (es. massa < 0)
+PhysiGo è un simulatore che permette di ricreare delle situazioni di piano inclinato e di moto del proiettile, visualizzare la scena ricreata e i dati in tempo reale d'esecuzione. È possibile inserire i dati manualmente o importare i problemi da file. I dati in input sono verificati per evitare dati scorretti o incongruenze (es. $\text{massa} < 0$)
 
 <details>
 <summary><strong>Piano Inclinato</strong></summary>
@@ -43,7 +43,7 @@ E nel caso dell'elemento rotatorio, anche:
 
 - Raggio
 
-I dati inseriti devono essere fisicamente corretti (es. valori non negativi, angolo tra 0° e 89° per avere un piano inclinato etc.) e sensati: se inserisco un determinato angolo e lunghezza di piano, l'altezza massima possibile del blocco viene calcolata automaticamente con L * sin(angolo). Se viene inserita una h maggiore di questo valore, avrò un errore (uguale al contrario)
+I dati inseriti devono essere fisicamente corretti (es. valori non negativi, angolo tra $0°$ e $89°$ per avere un piano inclinato etc.) e sensati: se inserisco un determinato angolo e lunghezza di piano, l'altezza massima possibile del blocco viene calcolata automaticamente con $L \cdot \sin(\theta)$. Se viene inserita una $h$ maggiore di questo valore, avrò un errore (uguale al contrario)
 
 #### Simulazione
 
@@ -57,9 +57,9 @@ Nella simulazione sono presenti diverse sezioni:
 
 Mostra i dati inziali del problema (inseriti dall'utente) e le varie forze
 
-- F Totale sul blocco
-- F Attrito
-- F Netta (Totale - Netta)
+- $F$ Totale sul blocco
+- $F$ Attrito
+- $F$ Netta (Totale - Netta)
 
 **LIVE DATA**
 
@@ -74,15 +74,15 @@ Mostra i dati in tempo reale della simulazione
 - Altezza del blocco
 
 - Energia Cinetica (Tran e rot)
-- U
-- W (Lavoro Frizione)
-- W Totale
+- $U$
+- $W$ (Lavoro Frizione)
+- $W$ Totale
 
 Quando la simulazione termina, compaiono al centro dello schermo i dati riassuntivi:
 
 ![Block Final](./img/ReadMe/blockFinal.png)
 
-- Inclined Phase: Mostra T totale, Velocità, Accelerazione, K e W al momento del raggiungimento della base del piano
+- Inclined Phase: Mostra $T$ totale, Velocità, Accelerazione, $K$ e $W$ al momento del raggiungimento della base del piano
 - Horizontal Phase: Mostra lo Spostamento, il Tempo e La Decelerazione avvenuti sul piano orizzontale
 - Final Recap: Mostra il Tempo e lo Spostamento totali
 
@@ -92,7 +92,7 @@ Nel caso dell'elemento rotatorio sono presenti delle piccole differenze
 
 ![Rolling](./img/ReadMe/rolling.png)
 
-In questo caso vengono anche mostrati il Raggio, la formula I per la forma scelta e il coefficiente rotazionale
+In questo caso vengono anche mostrati il Raggio, la formula $I$ per la forma scelta e il coefficiente rotazionale
 
 #### Casi Particolari
 
@@ -138,8 +138,8 @@ Quando viene avviata la simulazione sarà visualizzata una simulazione real time
 In PROBLEM DATA sono mostrati i dati iniziali inseriti dall'utente, mentre in LIVE DATA sono mostrati in tempo reale
 
 - Tempo
-- Posizione X e Y
-- Velocità X e Y
+- Posizione $X$ e $Y$
+- Velocità $X$ e $Y$
 - Velocità Totale
 - Angolo
 
@@ -147,7 +147,7 @@ Alla fine della simulazione, in alto saranno mostrati Tempo di Volo, Gittata e A
 
 ![Fly Final](./img/ReadMe/flyFinal.png)
 
-Se durante l'inserimento dei dati inserisco un valore di altezza diverso da 0, il proiettile partirà dall'altezza selezionata
+Se durante l'inserimento dei dati inserisco un valore di altezza diverso da $0$, il proiettile partirà dall'altezza selezionata
 
 ![Fly Up](./img/ReadMe/flyUp.png)
 
@@ -272,7 +272,7 @@ Ogni idea o progetto sono ben accetti aprendo una Issue o una Merge Request al p
 
 ## 🇬🇧 English
 
-PhysiGo is a simulator that allows to simulate Inclined Plane and Projectile Motion situations, visualize the scene graphically and check the real time data. It is possible to insert manually the data or to import problems from files. Input data is verified to avoid incorrect or incosistent data (eg. mass < 0)
+PhysiGo is a simulator that allows to simulate Inclined Plane and Projectile Motion situations, visualize the scene graphically and check the real time data. It is possible to insert manually the data or to import problems from files. Input data is verified to avoid incorrect or incosistent data (eg. $\text{mass} < 0$)
 
 <details>
 <summary><strong>Inclined Plane</strong></summary>
@@ -301,7 +301,7 @@ In case you selected rotatory element you must insert also:
 
 - Radius
 
-Inserted data must be Physically Correct (eg. non negative values, angle between 0° and 89° to have an inclined plane etc.) and realistic: if I insert an angle and a lenght of plane, highest possible block height will be calculated by doing L * sin(angle). If you insert a value bigger of this, you will have an error message (also the opposite is true)
+Inserted data must be Physically Correct (eg. non negative values, angle between $0°$ and $89°$ to have an inclined plane etc.) and realistic: if I insert an angle and a lenght of plane, highest possible block height will be calculated by doing $L \cdot \sin(\theta)$. If you insert a value bigger of this, you will have an error message (also the opposite is true)
 
 #### Simulation
 
@@ -315,9 +315,9 @@ In the simulation we have different sections
 
 Shows initial data values (inserted by the user) and various forces
 
-- F on the block
-- Friction F
-- F Total (Total - Net)
+- $F$ on the block
+- Friction $F$
+- $F$ Total ($Total - Net$)
 
 **LIVE DATA**
 
@@ -332,15 +332,15 @@ Shows real time simulation data
 - Block Height
 
 - Kinetic Energy (trans and rot)
-- U
-- W (Friction Work)
-- Total W
+- $U$
+- $W$ (Friction Work)
+- Total $W$
 
 When the simulation ends, at the center of the screen is displayed the following data:
 
 ![Block Final](./img/ReadMe/blockFinal.png)
 
-- Inclined Phase: Shows Time total, Speed, Acceleration, K and W at the time of reaching of the base
+- Inclined Phase: Shows Time total, Speed, Acceleration, $K$ and $W$ at the time of reaching of the base
 - Horizontal Phase: Shows Movement, Time and Deceleration on the horizontal plane
 - Findal Recap: Shows total Time and Movement
 
@@ -396,8 +396,8 @@ When the simulation is started a real time launch simulation will be displayed
 In PROBLEM DATA are shown initial values inserted by the user, while in LIVE DATA are shown real time data
 
 - Time
-- Position X and Y
-- Speed X and Y
+- Position $X$ and $Y$
+- Speed $X$ and $Y$
 - Total Speed
 - Angle
 
@@ -405,7 +405,7 @@ At the end of the simulation, Total fly Time, Range and Max Height will be displ
 
 ![Fly Final](./img/ReadMe/flyFinal.png)
 
-If the initial height is different from 0, projectile will start from the selected data
+If the initial height is different from $0$, projectile will start from the selected data
 
 ![Fly Up](./img/ReadMe/flyUp.png)
 

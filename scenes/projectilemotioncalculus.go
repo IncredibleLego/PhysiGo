@@ -160,7 +160,7 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 		return ProjectileMotionSolution{}, errors.New("g must be greater than 0")
 	}
 	if h0 < 0 {
-		return ProjectileMotionSolution{}, errors.New("h must be >= 0")
+		return ProjectileMotionSolution{}, errors.New("h must be ≥ 0")
 	}
 
 	// Servono almeno due input non nulli dell'utente (oltre alla gravita)
@@ -182,7 +182,7 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 		knownCount++
 	}
 	if knownCount < 2 {
-		return ProjectileMotionSolution{}, errors.New("insert at least 2 values among V0, theta, h, R, t")
+		return ProjectileMotionSolution{}, errors.New("insert at least 2 values among v₀, theta, h, R, t")
 	}
 
 	knownV0 := v0 > projectileEpsilon
@@ -204,7 +204,7 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 		// ricava il tempo dalla caduta libera e la gittata da x = v0*t.
 		if knownV0 && knownH && !knownTheta && !knownT {
 			if h0 <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("for v0-only launch, h must be > 0")
+				return ProjectileMotionSolution{}, errors.New("for v₀-only launch, h must be > 0")
 			}
 			tf = math.Sqrt((2 * h0) / g)
 			if tf <= projectileEpsilon {
@@ -228,7 +228,7 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 			}
 			tf = (vy + math.Sqrt(discriminant)) / g
 			if tf <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("invalid inputs: flight time <= 0")
+				return ProjectileMotionSolution{}, errors.New("invalid inputs: flight time ≤ 0")
 			}
 			knownT = true
 			changed = true
@@ -253,7 +253,7 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 			theta := thetaDeg * math.Pi / 180.0
 			den := math.Cos(theta) * tf
 			if den <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("invalid inputs for V0 from R, t, theta")
+				return ProjectileMotionSolution{}, errors.New("invalid inputs for V0 from R, t, θ")
 			}
 			v0 = rg / den
 			if v0 <= projectileEpsilon {
@@ -289,11 +289,11 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 			theta := thetaDeg * math.Pi / 180.0
 			den := tf * math.Sin(theta)
 			if den <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("cannot compute V0 from t, h, theta")
+				return ProjectileMotionSolution{}, errors.New("cannot compute v₀ from t, h, theta")
 			}
 			v0 = (0.5*g*tf*tf - h0) / den
 			if v0 <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("computed V0 is not valid")
+				return ProjectileMotionSolution{}, errors.New("computed v₀ is not valid")
 			}
 			knownV0 = true
 			changed = true
@@ -304,7 +304,7 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 			// sin(theta) = ( (1/2)g t^2 - h ) / (v0*t).
 			s := (0.5*g*tf*tf - h0) / (v0 * tf)
 			if s < -1 || s > 1 {
-				return ProjectileMotionSolution{}, errors.New("cannot compute theta from V0, h, t")
+				return ProjectileMotionSolution{}, errors.New("cannot compute theta from v₀, h, t")
 			}
 			if s < -1 {
 				s = -1
@@ -322,15 +322,15 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 
 		if knownR && knownH && knownTheta && !knownV0 {
 			// Formula chiusa dall'equazione della traiettoria con R, h, theta noti:
-			// v0^2 = g*R^2 / ( 2*cos^2(theta)*(R*tan(theta)-h) ).
+			// v0^2 = g*r² / ( 2*cos²(theta)*(R*tan(theta)-h) ).
 			theta := thetaDeg * math.Pi / 180.0
 			den := 2 * math.Cos(theta) * math.Cos(theta) * (rg*math.Tan(theta) - h0)
 			if den <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("cannot compute V0 from R, h, theta")
+				return ProjectileMotionSolution{}, errors.New("cannot compute v₀ from R, h, theta")
 			}
 			v0sq := g * rg * rg / den
 			if v0sq <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("computed V0^2 is not valid")
+				return ProjectileMotionSolution{}, errors.New("computed v₀² is not valid")
 			}
 			v0 = math.Sqrt(v0sq)
 			knownV0 = true
@@ -339,11 +339,11 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 
 		if knownV0 && knownH && knownR && !knownTheta {
 			// Risolve la quadratica in u = tan(theta) dalla traiettoria in x=R:
-			// h + R*u - (g*R^2/(2*v0^2))*(1+u^2) = 0.
+			// h + R*u - (g*r²/(2*v0^2))*(1+u^2) = 0.
 			// Possono uscire due angoli validi; viene scelto quello piu piccolo.
 			a := g * rg * rg / (2 * v0 * v0)
 			if a <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("cannot compute theta from V0, h, R")
+				return ProjectileMotionSolution{}, errors.New("cannot compute theta from v₀, h, R")
 			}
 			disc := rg*rg - 4*a*(a-h0)
 			if disc < 0 {
@@ -382,7 +382,7 @@ func SolveProjectileMotion(v0, thetaDeg, h0, rg, tf, g float64) (ProjectileMotio
 			vy := (0.5*g*tf*tf - h0) / tf
 			v0 = math.Hypot(vx, vy)
 			if v0 <= projectileEpsilon {
-				return ProjectileMotionSolution{}, errors.New("computed V0 is not valid")
+				return ProjectileMotionSolution{}, errors.New("computed v₀ is not valid")
 			}
 			thetaDeg = math.Atan2(vy, vx) * 180 / math.Pi
 			if thetaDeg < 0 || thetaDeg >= 90 {

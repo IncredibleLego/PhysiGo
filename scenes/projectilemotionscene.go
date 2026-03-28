@@ -82,8 +82,8 @@ func (p *ProjectileMotionScene) Draw(screen *ebiten.Image) {
 		fmt.Sprintf("t: %.2f s", p.simState.Time),
 		fmt.Sprintf("x: %.2f m", p.simState.X),
 		fmt.Sprintf("y: %.2f m", p.simState.Y),
-		fmt.Sprintf("vx: %.2f m/s", p.simState.Vx),
-		fmt.Sprintf("vy: %.2f m/s", p.simState.Vy),
+		fmt.Sprintf("vₓ: %.2f m/s", p.simState.Vx),
+		fmt.Sprintf("vᵧ: %.2f m/s", p.simState.Vy),
 		fmt.Sprintf("speed: %.2f m/s", p.simState.Speed),
 		fmt.Sprintf("angle(v): %.2f\u00b0", p.simState.AngleDeg),
 	}
@@ -91,12 +91,12 @@ func (p *ProjectileMotionScene) Draw(screen *ebiten.Image) {
 	// Dati statici/risolti del problema (stato iniziale + risultati globali).
 	rightLines := []string{
 		"PROBLEM DATA",
-		fmt.Sprintf("v0 (initial speed): %.2f m/s", p.calc.V0),
+		fmt.Sprintf("v₀ (initial speed): %.2f m/s", p.calc.V0),
 		fmt.Sprintf("\u03b8 (angle): %.2f\u00b0", p.calc.ThetaDeg),
 		fmt.Sprintf("h (height): %.2f m", p.calc.H0),
 		fmt.Sprintf("R (range): %.2f m", p.calc.Range),
 		fmt.Sprintf("t (time): %.2f s", p.calc.FlightTime),
-		fmt.Sprintf("g (gravity): %.2f m/s^2", p.calc.G),
+		fmt.Sprintf("g (gravity): %.2f m/s²", p.calc.G),
 		fmt.Sprintf("apex t: %.2f s", p.calc.ApexTime),
 		fmt.Sprintf("apex x: %.2f m", p.calc.ApexX),
 		fmt.Sprintf("apex y: %.2f m", p.calc.ApexY),

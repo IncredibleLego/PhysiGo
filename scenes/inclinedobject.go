@@ -47,17 +47,17 @@ func rotaryTypeLabel(kind InclinedRotaryType) string {
 func rotaryInertiaFormula(kind InclinedRotaryType) string {
 	switch kind {
 	case RotaryRing, RotaryHollowCylinder:
-		return "I = m*r^2"
+		return "I = m⋅r²"
 	case RotaryDisk, RotarySolidCylinder:
-		return "I = 1/2*m*r^2"
+		return "I = ½⋅m⋅r²"
 	case RotarySphere:
-		return "I = 2/5*m*r^2"
+		return "I = 2/5⋅m⋅r²"
 	default:
-		return "I = 1/2*m*r^2"
+		return "I = ½⋅m⋅r²"
 	}
 }
 
-// rotaryInertiaFactor restituisce il coefficiente k nella formula I = k*m*r^2.
+// rotaryInertiaFactor restituisce il coefficiente k nella formula I = k*m*r².
 func rotaryInertiaFactor(kind InclinedRotaryType) float64 {
 	switch kind {
 	case RotaryRing, RotaryHollowCylinder:

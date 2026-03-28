@@ -83,7 +83,7 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 		fmt.Sprintf("Phase: %s", phaseLabel),
 		fmt.Sprintf("t: %.2f s", i.simState.Time),
 		fmt.Sprintf("v: %.2f m/s", i.simState.Velocity),
-		fmt.Sprintf("a: %.2f m/s^2", i.calc.CurrentAcceleration(i.simState.Phase)),
+		fmt.Sprintf("a: %.2f m/s²", i.calc.CurrentAcceleration(i.simState.Phase)),
 		fmt.Sprintf("s (Inclined): %.2f m", i.simState.S),
 		fmt.Sprintf("s (ground): %.2f m", i.simState.HorizS),
 		fmt.Sprintf("s Tot: %.2f m", i.simState.S+i.simState.HorizS),
@@ -133,14 +133,14 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 			fmt.Sprintf("Shape: %s", rotaryShapeLabel),
 			fmt.Sprintf("I formula: %s", rotaryFormula),
 			fmt.Sprintf("Radius: %.2f m", i.calc.Radius),
-			fmt.Sprintf("Inertia I: %.3f kg*m^2", i.calc.MomentOfInertia),
+			fmt.Sprintf("Inertia I: %.3f kg⋅m^2", i.calc.MomentOfInertia),
 			fmt.Sprintf("Mass (m): %.2f kg", i.snapshot.mass),
-			fmt.Sprintf("Gravity (g): %.2f m/s^2", i.snapshot.gravity),
+			fmt.Sprintf("Gravity (g): %.2f m/s²", i.snapshot.gravity),
 			fmt.Sprintf("θ: %.1f°", i.snapshot.theta),
 			fmt.Sprintf("Length (L): %.2f m", i.snapshot.length),
 			fmt.Sprintf("Block Height (h): %.2f m", i.calc.InitialHeight),
-			fmt.Sprintf("v0: %.2f m/s", i.snapshot.v0),
-			fmt.Sprintf("μ_r: %s", muRLabel),
+			fmt.Sprintf("v₀: %.2f m/s", i.snapshot.v0),
+			fmt.Sprintf("μᵣ %s", muRLabel),
 			"",
 			fmt.Sprintf("F total (body): %.2f N", fTotalBlock),
 			fmt.Sprintf("Fr (rolling): %.2f N", rollingForce),
@@ -152,13 +152,13 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 			"PLANE DATA",
 			fmt.Sprintf("Body: %s", bodyLabel),
 			fmt.Sprintf("Mass (m): %.2f kg", i.snapshot.mass),
-			fmt.Sprintf("Gravity (g): %.2f m/s^2", i.snapshot.gravity),
+			fmt.Sprintf("Gravity (g): %.2f m/s²", i.snapshot.gravity),
 			fmt.Sprintf("θ: %.1f°", i.snapshot.theta),
 			fmt.Sprintf("Length (L): %.2f m", i.snapshot.length),
 			fmt.Sprintf("Block Height (h): %.2f m", i.calc.InitialHeight),
-			fmt.Sprintf("v0: %.2f m/s", i.snapshot.v0),
-			fmt.Sprintf("μ_s: %s", muSLabel),
-			fmt.Sprintf("μ_k: %s", muKLabel),
+			fmt.Sprintf("v₀: %.2f m/s", i.snapshot.v0),
+			fmt.Sprintf("μₛ: %s", muSLabel),
+			fmt.Sprintf("μₖ: %s", muKLabel),
 			"",
 			fmt.Sprintf("F total (block): %.2f N", fTotalBlock),
 			fmt.Sprintf("Fa (friction): %.2f N", fAttrito),
@@ -248,7 +248,7 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 				text string
 				col  string
 			}{
-				text: fmt.Sprintf("a: %.3fm/s^2", i.calc.Acceleration),
+				text: fmt.Sprintf("a: %.3fm/s²", i.calc.Acceleration),
 				col:  "white",
 			})
 			resultLines = append(resultLines, struct {
@@ -288,7 +288,7 @@ func (i *InclinedPlaneScene) Draw(screen *ebiten.Image) {
 					text string
 					col  string
 				}{
-					text: fmt.Sprintf("a: %.3fm/s^2", -i.calc.HorizontalDecel),
+					text: fmt.Sprintf("a: %.3fm/s²", -i.calc.HorizontalDecel),
 					col:  "white",
 				})
 				resultLines = append(resultLines, struct {

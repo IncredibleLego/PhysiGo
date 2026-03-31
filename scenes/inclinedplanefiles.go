@@ -216,10 +216,10 @@ func parseInclinedBlockPayload(payload map[string]interface{}) (*inclinedImporte
 		return nil, err
 	}
 	if muS < 0 {
-		return nil, errors.New("static_coeff deve essere >= 0")
+		return nil, errors.New("static_coeff deve essere ≥ 0")
 	}
 	if muK < 0 {
-		return nil, errors.New("dynamic_coeff deve essere >= 0")
+		return nil, errors.New("dynamic_coeff deve essere ≥ 0")
 	}
 	if muS > 0 && muK > muS {
 		return nil, errors.New("dynamic_coeff deve essere <= static_coeff quando static_coeff > 0")
@@ -249,7 +249,7 @@ func parseInclinedRotaryPayload(payload map[string]interface{}) (*inclinedImport
 		"length":           {},
 		"height":           {},
 		"rotational_coeff": {},
-		"v0":               {},
+		"v₀":               {},
 		"gravity":          {},
 	}
 
@@ -388,7 +388,7 @@ func validateInclinedCommonValues(mass, angle, length, height, v0, gravity float
 		return errors.New("height deve essere > 0")
 	}
 	if v0 < 0 {
-		return errors.New("v0 deve essere >= 0")
+		return errors.New("v0 deve essere ≥ 0")
 	}
 	if gravity <= 0 {
 		return errors.New("gravity deve essere > 0")

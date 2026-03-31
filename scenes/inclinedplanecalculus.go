@@ -26,7 +26,7 @@ type InclinedPlaneCalculus struct {
 	Acceleration       float64
 	Slides             bool
 
-	// Modello rotazionale (I = k*m*r^2)
+	// Modello rotazionale (I = k*m*r²)
 	RotaryInertiaFactor float64
 	MomentOfInertia     float64
 
@@ -426,7 +426,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 		}
 
 		if slides {
-			// Accelerazione con rotazione: a = F_net / (m*(1 + I/(m*r^2)))
+			// Accelerazione con rotazione: a = F_net / (m*(1 + I/(m*r²)))
 			den := cfg.InclinedMass * (1.0 + inertiaFactor)
 			if den > 0 {
 				accel = availableForce / den
@@ -530,7 +530,7 @@ func ComputeInclinedPlaneCalculus(cfg *config.Config) InclinedPlaneCalculus {
 			horizontalStopTime = velocityAtBase / horizontalDecel
 		}
 	} else if cfg.InclinedMuKSet {
-		// Block: decelerazione = μ_k * g
+		// Block: decelerazione = μₖ * g
 		horizontalDecel = cfg.InclinedMuK * cfg.InclinedGravity
 		if horizontalDecel > 0 && velocityAtBase > 0 && !stopsOnIncline {
 			horizontalStopDist = (velocityAtBase * velocityAtBase) / (2 * horizontalDecel)

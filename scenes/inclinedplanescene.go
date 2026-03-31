@@ -674,12 +674,21 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	if targetSide < slopePixels*0.07 {
 		targetSide = slopePixels * 0.07
 	}
+	if rotateByPhysics && i.calc.Radius > 0 {
+		// For rotary bodies, keep rendered diameter tied to physical radius.
+		targetSide = 2.0 * i.calc.Radius * pxPerMeter
+		maxRotarySide := math.Min(slopePixels*0.24, sh*0.26)
+		if targetSide > maxRotarySide {
+			targetSide = maxRotarySide
+		}
+	}
 	if targetSide < 10 {
 		targetSide = 10
 	}
 	bScale := targetSide / math.Max(bImgW, bImgH)
 	bW := bImgW * bScale
 	bH := bImgH * bScale
+	rotaryRadiusPix := bH / 2
 
 	slopeLen := i.calc.DistanceToBase
 	distToBase := i.calc.DistanceToBase
@@ -693,8 +702,8 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 		contactInset := 1.5
 
 		if rotateByPhysics {
-			cx := gx - bW/2
-			cy := triBaseY + contactInset - bH/2
+			cx := gx
+			cy := triBaseY + contactInset - rotaryRadiusPix
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(bScale, bScale)
 			op.GeoM.Translate(-bW/2, -bH/2)
@@ -728,11 +737,10 @@ func (i *InclinedPlaneScene) drawInclinedPlane(screen *ebiten.Image, liveDataBot
 	sy := syTouch + math.Cos(thetaRad)*contactInset
 
 	if rotateByPhysics {
-		// Mantiene il pivot al centro e solleva lo sprite lungo la normale esterna al piano
-		// per dare l'effetto di rotazione sul piano inclinato
-		lift := math.Max(2.0, bH*0.07)
-		cx := sx - bW/2 + math.Sin(thetaRad)*lift
-		cy := sy - bH/2 - math.Cos(thetaRad)*lift
+		// Position the center at one rendered radius from the contact point along the surface normal.
+		clearance := 0.6
+		cx := sxTouch + math.Sin(thetaRad)*(rotaryRadiusPix+clearance)
+		cy := syTouch - math.Cos(thetaRad)*(rotaryRadiusPix+clearance)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(bScale, bScale)
 		op.GeoM.Translate(-bW/2, -bH/2)

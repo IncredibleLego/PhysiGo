@@ -221,6 +221,9 @@ func parseInclinedBlockPayload(payload map[string]interface{}) (*inclinedImporte
 	if muK < 0 {
 		return nil, errors.New("dynamic_coeff deve essere >= 0")
 	}
+	if muS > 0 && muK > muS {
+		return nil, errors.New("dynamic_coeff deve essere <= static_coeff quando static_coeff > 0")
+	}
 
 	return &inclinedImportedBlockProblem{
 		Mass:         mass,

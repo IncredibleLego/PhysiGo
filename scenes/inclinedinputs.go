@@ -547,6 +547,29 @@ func (i *InclinedInputScene) tryConfirmActiveFieldBlock() bool {
 			return false
 		}
 	}
+	if !i.validateFrictionConsistencyBlock() {
+		return false
+	}
+	return true
+}
+
+// validateFrictionConsistencyBlock garantisce coerenza tra attrito statico e dinamico
+// per il blocco: se μ_s > 0, allora μ_k non puo' superare μ_s.
+func (i *InclinedInputScene) validateFrictionConsistencyBlock() bool {
+	muS, okS, muSSet := parseOptionalNonNegative(i.muSInput)
+	if !okS {
+		return false
+	}
+	muK, okK, muKSet := parseOptionalNonNegative(i.muKInput)
+	if !okK {
+		return false
+	}
+
+	if muSSet && muKSet && muS > 0 && muK > muS {
+		i.validationMessage = "μ_k must be <= μ_s when μ_s > 0"
+		return false
+	}
+
 	return true
 }
 
@@ -639,6 +662,9 @@ func (i *InclinedInputScene) allInputsValidBlock() bool {
 		return false
 	}
 	if _, ok, _ := parseOptionalNonNegative(i.v0Input); !ok {
+		return false
+	}
+	if !i.validateFrictionConsistencyBlock() {
 		return false
 	}
 	if strings.TrimSpace(i.lengthInput) == "" && strings.TrimSpace(i.hBlockInput) == "" {

@@ -246,7 +246,7 @@ func parseInclinedRotaryPayload(payload map[string]interface{}) (*inclinedImport
 		"length":           {},
 		"height":           {},
 		"rotational_coeff": {},
-		"v₀":               {},
+		"v0":               {},
 		"gravity":          {},
 	}
 

@@ -47,12 +47,12 @@ func (p *ProjectileMotionInputScene) Draw(screen *ebiten.Image) {
 
 	// Costruisce le righe del form con etichetta, valore corrente e unita.
 	lines := []string{
-		"v0 (initial speed): " + p.renderInputValue(p.v0Input, 0, " m/s"),
+		"v₀ (initial speed): " + p.renderInputValue(p.v0Input, 0, " m/s"),
 		"\u03b8 (angle): " + p.renderInputValue(p.thetaInput, 1, " \u00b0"),
 		"h (height): " + p.renderInputValue(p.hInput, 2, " m"),
 		"R (range): " + p.renderInputValue(p.rangeInput, 3, " m"),
 		"t (time): " + p.renderInputValue(p.timeInput, 4, " s"),
-		"g (gravity): " + p.renderInputValue(p.gravityInput, 5, " m/s^2"),
+		"g (gravity): " + p.renderInputValue(p.gravityInput, 5, " m/s²"),
 	}
 
 	for idx, line := range lines {
@@ -70,7 +70,7 @@ func (p *ProjectileMotionInputScene) Draw(screen *ebiten.Image) {
 		utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(p.validationMessage, smallText, "libertinus"), y, "red", screen, p.validationMessage, "libertinus")
 	}
 
-	status := "Insert at least 2 non-zero values among v0, \u03b8, h, R, t"
+	status := "Insert at least 2 non-zero values among v₀, \u03b8, h, R, t"
 	if p.allInputsValid() {
 		status = "Values ready - press Enter to continue"
 	}
@@ -177,7 +177,7 @@ func (p *ProjectileMotionInputScene) tryConfirmActiveField() bool {
 	case 0:
 		_, ok, _ := parseOptionalNonNegative(p.v0Input)
 		if !ok {
-			p.validationMessage = "v0 must be >= 0"
+			p.validationMessage = "v₀ must be ≥ 0"
 			return false
 		}
 	case 1:
@@ -189,19 +189,19 @@ func (p *ProjectileMotionInputScene) tryConfirmActiveField() bool {
 	case 2:
 		_, ok, _ := parseOptionalNonNegative(p.hInput)
 		if !ok {
-			p.validationMessage = "h must be >= 0"
+			p.validationMessage = "h must be ≥ 0"
 			return false
 		}
 	case 3:
 		_, ok, _ := parseOptionalNonNegative(p.rangeInput)
 		if !ok {
-			p.validationMessage = "R must be >= 0"
+			p.validationMessage = "R must be ≥ 0"
 			return false
 		}
 	case 4:
 		_, ok, _ := parseOptionalNonNegative(p.timeInput)
 		if !ok {
-			p.validationMessage = "t must be >= 0"
+			p.validationMessage = "t must be ≥ 0"
 			return false
 		}
 	case 5:
@@ -228,17 +228,17 @@ func (p *ProjectileMotionInputScene) allInputsValid() bool {
 	}
 	h, ok, _ := parseOptionalNonNegative(p.hInput)
 	if !ok {
-		p.validationMessage = "h must be >= 0"
+		p.validationMessage = "h must be ≥ 0"
 		return false
 	}
 	rg, ok, _ := parseOptionalNonNegative(p.rangeInput)
 	if !ok {
-		p.validationMessage = "R must be >= 0"
+		p.validationMessage = "R must be ≥ 0"
 		return false
 	}
 	tf, ok, _ := parseOptionalNonNegative(p.timeInput)
 	if !ok {
-		p.validationMessage = "t must be >= 0"
+		p.validationMessage = "t must be ≥ 0"
 		return false
 	}
 	g, ok, gSet := parseOptionalMin(p.gravityInput, 0)
@@ -267,7 +267,7 @@ func (p *ProjectileMotionInputScene) allInputsValid() bool {
 		knownCount++
 	}
 	if knownCount < 2 {
-		p.validationMessage = "Insert at least 2 non-zero values among v0, \u03b8, h, R, t"
+		p.validationMessage = "Insert at least 2 non-zero values among v₀, \u03b8, h, R, t"
 		return false
 	}
 

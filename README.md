@@ -230,8 +230,8 @@ Ci sono diversi modi per utilizzare PhysiGo
 
 Andando sulla [pagina ufficiale](https://github.com/IncredibleLego/PhysiGo) del progetto è possibile trovare l'ultima relase ufficiale dove sono disponibili per il download i file per Linux (.tar) e Windows (.zip)
 
-- [Scarica Versione Linux](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.3/PhysiGo-linux.tar.gz)
-- [Scarica Versione Windows](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.3/PhysiGo-windows.zip)
+- [Scarica Versione Linux](https://github.com/IncredibleLego/PhysiGo/releases/latest/download/PhysiGo-linux.tar.gz)
+- [Scarica Versione Windows](https://github.com/IncredibleLego/PhysiGo/releases/latest/download/PhysiGo-windows.zip)
 
 Una volta scaricata la corretta versione
 
@@ -488,8 +488,8 @@ There are many ways to use PhysiGo
 
 By going on the [official page](https://github.com/IncredibleLego/PhysiGo) of the project it is possibile to find the latest official release aviabile to download for Linux (.tar) and Windows (.zip)
 
-- [Download Linux Version](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.3/PhysiGo-linux.tar.gz)
-- [Download Windows Version](https://github.com/IncredibleLego/PhysiGo/releases/download/v1.0.3/PhysiGo-windows.zip)
+- [Download Linux Version](https://github.com/IncredibleLego/PhysiGo/releases/latest/download/PhysiGo-linux.tar.gz)
+- [Download Windows Version](https://github.com/IncredibleLego/PhysiGo/releases/latest/download/PhysiGo-windows.zip)
 
 Once the correct version is downloaded
 

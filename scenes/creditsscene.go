@@ -57,7 +57,7 @@ func drawCenteredLine(screen *ebiten.Image, y float64, colorName, lineText, font
 }
 
 func (c *CreditsScene) Draw(screen *ebiten.Image) {
-	y := float64(config.GlobalConfig.ScreenHeight) * 0.20
+	y := float64(config.GlobalConfig.ScreenHeight) * 0.15
 	baseLine := config.GlobalConfig.TextDimension * 1.7
 	fontSize := config.GlobalConfig.TextDimension
 	fontName := "pressStart"

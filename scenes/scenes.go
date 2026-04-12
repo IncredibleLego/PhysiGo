@@ -204,25 +204,43 @@ func renderBlinkingValue(lastBlink *time.Time, value string) string {
 }
 
 // handleNumericTextInput gestisce input numerico base: cifre, backspace e separatore decimale.
-func handleNumericTextInput(input *string, maxChars int) {
+// Se overwriteOnType e' true, il primo carattere numerico sostituisce completamente il valore corrente.
+func handleNumericTextInput(input *string, maxChars int, overwriteOnType *bool) {
 	text := *input
+	overwrite := overwriteOnType != nil && *overwriteOnType
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(text) > 0 {
 		text = text[:len(text)-1]
 	}
 
 	for key := ebiten.Key0; key <= ebiten.Key9; key++ {
-		if inpututil.IsKeyJustPressed(key) && len(text) < maxChars {
-			text += string('0' + rune(key-ebiten.Key0))
+		if inpututil.IsKeyJustPressed(key) {
+			if overwrite {
+				text = ""
+				overwrite = false
+			}
+			if len(text) < maxChars {
+				text += string('0' + rune(key-ebiten.Key0))
+			}
+			if overwriteOnType != nil {
+				*overwriteOnType = false
+			}
 		}
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) || inpututil.IsKeyJustPressed(ebiten.KeyComma) {
+		if overwrite {
+			text = ""
+			overwrite = false
+		}
 		if !strings.ContainsAny(text, ".,") && len(text) < maxChars {
 			if text == "" {
 				text = "0"
 			}
 			text += "."
+		}
+		if overwriteOnType != nil {
+			*overwriteOnType = false
 		}
 	}
 

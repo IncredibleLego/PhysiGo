@@ -13,7 +13,8 @@ import (
 const maxProjectileAngle = 89.0
 
 type ProjectileMotionInputScene struct {
-	activeField int
+	activeField     int
+	overwriteOnType bool
 
 	v0Input      string
 	thetaInput   string
@@ -47,12 +48,12 @@ func (p *ProjectileMotionInputScene) Draw(screen *ebiten.Image) {
 
 	// Costruisce le righe del form con etichetta, valore corrente e unita.
 	lines := []string{
-		"v₀ (initial speed): " + p.renderInputValue(p.v0Input, 0, " m/s"),
-		"\u03b8 (angle): " + p.renderInputValue(p.thetaInput, 1, " \u00b0"),
-		"h (height): " + p.renderInputValue(p.hInput, 2, " m"),
-		"R (range): " + p.renderInputValue(p.rangeInput, 3, " m"),
-		"t (time): " + p.renderInputValue(p.timeInput, 4, " s"),
-		"g (gravity): " + p.renderInputValue(p.gravityInput, 5, " m/s²"),
+		"v₀ (initial speed): " + utils.RenderInputValue(&p.lastBlink, p.v0Input, 0, p.activeField, " m/s"),
+		"\u03b8 (angle): " + utils.RenderInputValue(&p.lastBlink, p.thetaInput, 1, p.activeField, " \u00b0"),
+		"h (height): " + utils.RenderInputValue(&p.lastBlink, p.hInput, 2, p.activeField, " m"),
+		"R (range): " + utils.RenderInputValue(&p.lastBlink, p.rangeInput, 3, p.activeField, " m"),
+		"t (time): " + utils.RenderInputValue(&p.lastBlink, p.timeInput, 4, p.activeField, " s"),
+		"g (gravity): " + utils.RenderInputValue(&p.lastBlink, p.gravityInput, 5, p.activeField, " m/s²"),
 	}
 
 	for idx, line := range lines {
@@ -82,6 +83,7 @@ func (p *ProjectileMotionInputScene) Draw(screen *ebiten.Image) {
 func (p *ProjectileMotionInputScene) FirstLoad() {
 	// Valori iniziali: g preimpostata, gli altri campi a 0.
 	p.activeField = 0
+	p.overwriteOnType = true
 	p.v0Input = "0"
 	p.thetaInput = "0"
 	p.hInput = "0"
@@ -99,6 +101,7 @@ func (p *ProjectileMotionInputScene) Update() SceneId {
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		return PauseSceneId
 	}
+	prevField := p.activeField
 
 	// Navigazione verticale ciclica tra i campi del form.
 	fieldCount := 6
@@ -121,6 +124,7 @@ func (p *ProjectileMotionInputScene) Update() SceneId {
 			p.validationMessage = ""
 			if p.activeField < fieldCount-1 {
 				p.activeField++
+				p.overwriteOnType = true
 			} else if p.allInputsValid() {
 				p.storeValues()
 				return ProjectileMotionSceneId
@@ -128,24 +132,12 @@ func (p *ProjectileMotionInputScene) Update() SceneId {
 		}
 	}
 
+	if p.activeField != prevField {
+		p.overwriteOnType = true
+	}
+
 	p.handleActiveFieldInput()
 	return ProjectileMotionInputSceneId
-}
-
-func (p *ProjectileMotionInputScene) renderInputValue(value string, fieldIndex int, unit string) string {
-	// Sul campo non attivo mostra valore + unita; su quello attivo usa il cursore lampeggiante.
-	if fieldIndex != p.activeField {
-		if value == "" {
-			return "-"
-		}
-		return value + unit
-	}
-	return p.renderBlinking(value)
-}
-
-func (p *ProjectileMotionInputScene) renderBlinking(value string) string {
-	// Cursore testuale semplice: alterna "_" per evidenziare il campo in modifica.
-	return renderBlinkingValue(&p.lastBlink, value)
 }
 
 func (p *ProjectileMotionInputScene) handleActiveFieldInput() {
@@ -168,7 +160,7 @@ func (p *ProjectileMotionInputScene) handleActiveFieldInput() {
 
 func (p *ProjectileMotionInputScene) handleNumericInput(input *string) {
 	// Parser minimale da tastiera: cifre, un separatore decimale e backspace.
-	handleNumericTextInput(input, 8)
+	handleNumericTextInput(input, 8, &p.overwriteOnType)
 }
 
 func (p *ProjectileMotionInputScene) tryConfirmActiveField() bool {

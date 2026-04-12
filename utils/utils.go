@@ -6,6 +6,7 @@ import (
 	"log"
 	"physiGo/config"
 	"sync"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -159,4 +160,26 @@ func Color(colorName string) (float32, float32, float32, float32) {
 		log.Printf("Unknown color: %s", colorName)
 		return 0, 0, 0, 255 // Default to black
 	}
+}
+
+// RenderInputValue returns the display string for an input field, adding a blinking cursor if it's the active field
+func RenderInputValue(lastBlink *time.Time, value string, fieldIndex int, activeField int, unit string) string {
+	if fieldIndex != activeField {
+		if value == "" {
+			return "-"
+		}
+		return value + unit
+	}
+
+	blinkOn := time.Since(*lastBlink) < time.Second
+	if time.Since(*lastBlink) > 2*time.Second {
+		*lastBlink = time.Now()
+	}
+	if blinkOn {
+		return value + "_"
+	}
+	if value == "" {
+		return "-"
+	}
+	return value
 }

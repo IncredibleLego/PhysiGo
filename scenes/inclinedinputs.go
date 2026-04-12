@@ -27,8 +27,9 @@ const (
 )
 
 type InclinedInputScene struct {
-	phase       inclinedInputPhase
-	activeField int
+	phase           inclinedInputPhase
+	activeField     int
+	overwriteOnType bool
 
 	objectMode InclinedObjectMode
 	rotaryType InclinedRotaryType
@@ -161,14 +162,14 @@ func (i *InclinedInputScene) drawBlockInput(screen *ebiten.Image) {
 	utils.ScreenDraw(0, utils.XCenteredWithFont(title, textDim, "libertinus"), startY-textDim*1.2, "yellow", screen, title, "libertinus")
 
 	lines := []string{
-		"m (mass > 0): " + i.renderInputValueBlock(i.massInput, 0),
-		"θ (0°-89°): " + i.renderInputValueBlock(i.thetaInput, 1),
-		"L (length > 0): " + i.renderInputValueBlock(i.lengthInput, 2),
-		"h_block (height): " + i.renderInputValueBlock(i.hBlockInput, 3),
-		"μₛ (≥0): " + i.renderInputValueBlock(i.muSInput, 4),
-		"μₖ (≥0): " + i.renderInputValueBlock(i.muKInput, 5),
-		"v₀ (initial speed): " + i.renderInputValueBlock(i.v0Input, 6),
-		"g (gravity): " + i.renderInputValueBlock(i.gravityInput, 7),
+		"m (mass > 0): " + utils.RenderInputValue(&i.lastBlink, i.massInput, 0, i.activeField, " kg"),
+		"θ (0°-89°): " + utils.RenderInputValue(&i.lastBlink, i.thetaInput, 1, i.activeField, "°"),
+		"L (length > 0): " + utils.RenderInputValue(&i.lastBlink, i.lengthInput, 2, i.activeField, " m"),
+		"h_block (height): " + utils.RenderInputValue(&i.lastBlink, i.hBlockInput, 3, i.activeField, " m"),
+		"μₛ (≥0): " + utils.RenderInputValue(&i.lastBlink, i.muSInput, 4, i.activeField, ""),
+		"μₖ (≥0): " + utils.RenderInputValue(&i.lastBlink, i.muKInput, 5, i.activeField, ""),
+		"v₀ (initial speed): " + utils.RenderInputValue(&i.lastBlink, i.v0Input, 6, i.activeField, " m/s"),
+		"g (gravity): " + utils.RenderInputValue(&i.lastBlink, i.gravityInput, 7, i.activeField, " m/s²"),
 	}
 
 	for idx, line := range lines {
@@ -211,14 +212,14 @@ func (i *InclinedInputScene) drawRotaryInput(screen *ebiten.Image) {
 	utils.ScreenDraw(-(textDim / 4), utils.XCenteredWithFont(modeLine, textDim-(textDim/4), "libertinus"), startY-textDim*0.35, "cyan", screen, modeLine, "libertinus")
 
 	lines := []string{
-		"m (mass > 0): " + i.renderInputValueRotary(i.massInput, 0),
-		"r (radius > 0): " + i.renderInputValueRotary(i.radiusInput, 1),
-		"θ (0°-89°): " + i.renderInputValueRotary(i.thetaInput, 2),
-		"L (length > 0): " + i.renderInputValueRotary(i.lengthInput, 3),
-		"h_block (height): " + i.renderInputValueRotary(i.hBlockInput, 4),
-		"μᵣ (≥0): " + i.renderInputValueRotary(i.muRInput, 5),
-		"v₀ (initial speed): " + i.renderInputValueRotary(i.v0Input, 6),
-		"g (gravity): " + i.renderInputValueRotary(i.gravityInput, 7),
+		"m (mass > 0): " + utils.RenderInputValue(&i.lastBlink, i.massInput, 0, i.activeField, " kg"),
+		"r (radius > 0): " + utils.RenderInputValue(&i.lastBlink, i.radiusInput, 1, i.activeField, " m"),
+		"θ (0°-89°): " + utils.RenderInputValue(&i.lastBlink, i.thetaInput, 2, i.activeField, "°"),
+		"L (length > 0): " + utils.RenderInputValue(&i.lastBlink, i.lengthInput, 3, i.activeField, " m"),
+		"h_block (height): " + utils.RenderInputValue(&i.lastBlink, i.hBlockInput, 4, i.activeField, " m"),
+		"μᵣ (≥0): " + utils.RenderInputValue(&i.lastBlink, i.muRInput, 5, i.activeField, ""),
+		"v₀ (initial speed): " + utils.RenderInputValue(&i.lastBlink, i.v0Input, 6, i.activeField, " m/s"),
+		"g (gravity): " + utils.RenderInputValue(&i.lastBlink, i.gravityInput, 7, i.activeField, " m/s²"),
 	}
 
 	for idx, line := range lines {
@@ -250,18 +251,19 @@ func (i *InclinedInputScene) drawRotaryInput(screen *ebiten.Image) {
 func (i *InclinedInputScene) FirstLoad() {
 	i.phase = inclinedSelectObjectPhase
 	i.activeField = 0
+	i.overwriteOnType = true
 	i.objectMode = InclinedObjectBlock
 	i.rotaryType = RotaryDisk
-	i.thetaInput = ""
+	i.thetaInput = "0"
 	i.muSInput = "0"
 	i.muKInput = "0"
 	i.muRInput = "0"
-	i.massInput = ""
+	i.massInput = "0"
 	i.gravityInput = "9.8"
-	i.lengthInput = ""
-	i.hBlockInput = ""
+	i.lengthInput = "0"
+	i.hBlockInput = "0"
 	i.v0Input = "0"
-	i.radiusInput = ""
+	i.radiusInput = "0"
 	i.lastBlink = time.Now()
 	i.validationMessage = ""
 	i.loadPreviewImages()
@@ -300,6 +302,8 @@ func (i *InclinedInputScene) Update() SceneId {
 		return i.updateObjectSelection()
 	}
 
+	prevField := i.activeField
+
 	fieldCount := i.currentFieldCount()
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
 		i.activeField--
@@ -319,11 +323,16 @@ func (i *InclinedInputScene) Update() SceneId {
 			i.validationMessage = ""
 			if i.activeField < fieldCount-1 {
 				i.activeField++
+				i.overwriteOnType = true
 			} else if i.allInputsValid() {
 				i.storeValues()
 				return InclinedPlaneSceneId
 			}
 		}
+	}
+
+	if i.activeField != prevField {
+		i.overwriteOnType = true
 	}
 
 	i.handleActiveFieldInput()
@@ -370,6 +379,7 @@ func (i *InclinedInputScene) updateObjectSelection() SceneId {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		i.phase = inclinedDataPhase
 		i.activeField = 0
+		i.overwriteOnType = true
 		i.validationMessage = ""
 	}
 
@@ -398,45 +408,6 @@ func (i *InclinedInputScene) rotateRotaryType(delta int) {
 // currentFieldCount restituisce il numero di campi attivi per la fase di input dati (8).
 func (i *InclinedInputScene) currentFieldCount() int {
 	return 8
-}
-
-// renderInputValueBlock formatta il valore di input per il corpo block con le unità di misura corrette
-// (es. "1.5 kg" per massa, "30°" per angolo).
-func (i *InclinedInputScene) renderInputValueBlock(value string, fieldIndex int) string {
-	units := map[int]string{
-		0: " kg",
-		1: "°",
-		2: " m",
-		3: " m",
-		6: " m/s",
-		7: " m/s²",
-	}
-	return i.renderInputValueWithUnits(value, fieldIndex, units)
-}
-
-// renderInputValueRotary formatta il valore di input per il corpo rotatorio con le unità di misura corrette.
-func (i *InclinedInputScene) renderInputValueRotary(value string, fieldIndex int) string {
-	units := map[int]string{
-		0: " kg",
-		1: " m",
-		2: "°",
-		3: " m",
-		4: " m",
-		6: " m/s",
-		7: " m/s²",
-	}
-	return i.renderInputValueWithUnits(value, fieldIndex, units)
-}
-
-// renderInputValueWithUnits applica le unità di misura al valore e aggiunge effetto blinking se il campo è attivo (cioè in fase di editing).
-func (i *InclinedInputScene) renderInputValueWithUnits(value string, fieldIndex int, units map[int]string) string {
-	if fieldIndex != i.activeField {
-		if value == "" {
-			return "-"
-		}
-		return value + units[fieldIndex]
-	}
-	return renderBlinkingValue(&i.lastBlink, value)
 }
 
 // handleActiveFieldInput processa i caratteri digitati dall'utente per il campo attualmente selezionato.
@@ -486,7 +457,7 @@ func (i *InclinedInputScene) handleActiveFieldInput() {
 
 // handleNumericInput gestisce l'input di caratteri numerici (0-9, ., -). Limita la lunghezza a 8 caratteri e filtra input non validi.
 func (i *InclinedInputScene) handleNumericInput(input *string) {
-	handleNumericTextInput(input, 8)
+	handleNumericTextInput(input, 8, &i.overwriteOnType)
 }
 
 // tryConfirmActiveField valida il valore nel campo attivo e, se valido, consente il passaggio al campo successivo. Diversa logica per block vs rotario.
